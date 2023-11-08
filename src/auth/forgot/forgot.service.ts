@@ -1,12 +1,9 @@
-import {
-  BadRequestException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { TokenService } from '../token/token.service';
 import { UserService } from 'src/user/user.service';
 import { MailService } from 'src/mail/mail.service';
 import { PasswordService } from '../password/password.service';
+import { ApiError } from 'src/exceptions/ApiError.exception';
 
 @Injectable()
 export class FogrotService {
@@ -27,13 +24,19 @@ export class FogrotService {
       this.resetLinkLastSent[email] &&
       currentTime - this.resetLinkLastSent[email] < this.resetLinkCooldown
     ) {
-      return 'Слишком частые запросы на сброс пароля. Подождите 5 минут.';
+      throw new ApiError(
+        'Слишком частые запросы на сброс пароля. Подождите 5 минут.',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const user = await this.userService.findByEmail(email);
 
     if (!user) {
-      return 'Недействительный запрос на сброс пароля';
+      throw new ApiError(
+        'Недействительный запрос на сброс пароля',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     const token = await this.tokenService.generateToken(email, '5m');
@@ -42,51 +45,54 @@ export class FogrotService {
     await this.mailService.sendUserConfirmation(user, token);
     await this.tokenService.saveToken(token, user.id);
 
-    return { message: 'Проверьте свою почту' };
+    console.log('all okey');
+    return { message: 'Check your email' };
   }
 
-  async reset(id: number, token: string, password: string) {
+  async reset(token: string, password: string) {
     token = token.replace(/\+/g, '.');
-    const email = this.tokenService.getEmailFromToken(token);
-    const user = await this.userService.findById(id);
-    const rightsToAccess = await this.checkValidateToken(user.id, token);
+    const user = this.tokenService.getEmailFromToken(token);
+    const rightsToAccess = await this.checkValidateToken(token);
 
-    if (rightsToAccess && user.email === email) {
+    if (rightsToAccess && user) {
       const hashedPassword =
         await this.passwordService.generatePassword(password);
+      console.log('user this' + user);
       const updatedUser = await this.userService.updatePassword(
         user.id,
         hashedPassword,
       );
 
       if (updatedUser) {
-        await this.tokenService.removeToken(token, user.id);
+        await this.tokenService.removeToken(token);
         return { user: updatedUser };
       } else {
-        throw new UnauthorizedException('Failed to update the user.');
+        throw new ApiError(
+          'Failed to update the user.',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
     } else {
-      throw new UnauthorizedException('Недействительный или истекший токен.');
+      throw new ApiError(
+        'Token is invalid or expired.',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
   }
 
-  async checkValidateToken(id: number, token: string) {
+  async checkValidateToken(token: string) {
     try {
       token = token.replace(/\+/g, '.');
       const email = await this.tokenService.getEmailFromToken(token);
-      const user = await this.userService.findById(id);
-      const rightsToAccess = await this.tokenService.accsessToken(
-        token,
-        user.id,
-      );
+      const rightsToAccess = await this.tokenService.accsessToken(token);
 
-      if (rightsToAccess && user.email === email) {
-        return { message: 'Токен действителен.' };
+      if (rightsToAccess && email) {
+        return { message: 'Token is valid' };
       } else {
-        throw new UnauthorizedException('Недействительный или истекший токен.');
+        throw new ApiError('Token is not valid', HttpStatus.UNAUTHORIZED);
       }
     } catch (error) {
-      throw new UnauthorizedException('Недействительный или истекший токен.');
+      throw new ApiError('Token is not valid', HttpStatus.UNAUTHORIZED);
     }
   }
 }

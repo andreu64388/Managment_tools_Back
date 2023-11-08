@@ -1,24 +1,42 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { TokenService } from 'src/auth/token/token.service';
+import { ROLES_KEY } from 'src/decorator/roles.decorator';
 import { UserService } from 'src/user/user.service';
 
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class RolesGuard implements CanActivate {
   constructor(
-    private readonly tokemService: TokenService,
+    private readonly tokenService: TokenService,
     private readonly userService: UserService,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromRequest(request);
-    console.log(token);
+    const requiredRoles = this.reflector.getAllAndOverride<string[]>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
     try {
+      if (!requiredRoles) {
+        return true;
+      }
+
       if (token) {
         const user = await this.findUserByToken(token);
+
         if (user) {
-          request.user = user;
-          return true;
+          const hasRequiredRoles = requiredRoles.every((requiredRole) =>
+            user.roles.some((userRole) => userRole.name === requiredRole),
+          );
+
+          if (hasRequiredRoles) {
+            request.user = user;
+            return true;
+          }
         }
       }
     } catch (error) {
@@ -40,7 +58,8 @@ export class JwtAuthGuard implements CanActivate {
 
   private async findUserByToken(token: string) {
     try {
-      const decodedToken = this.tokemService.getEmailFromToken(token);
+      const decodedToken = this.tokenService.getEmailFromToken(token);
+
       if (!decodedToken) {
         throw new Error('Invalid token');
       }

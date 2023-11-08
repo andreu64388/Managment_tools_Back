@@ -15,7 +15,7 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() body: RegisterUserDto) {
-    console.log('teste');
+    console.log(body);
     return this.authService.register(body);
   }
 
@@ -27,7 +27,6 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   async profile(@Request() req) {
-    console.log(req.user);
-    return req.user;
+    return { user: req.user };
   }
 }

@@ -6,21 +6,19 @@ export class ForgotController {
 
   @Post()
   async forgotPassword(@Body() req: { email: string }) {
-    console.log(req?.email);
     return this.forgotService.forgot(req.email);
   }
 
-  @Get('reset/:id/:token')
-  async resetPassword(@Param('id') id: number, @Param('token') token: string) {
-    return this.forgotService.checkValidateToken(id, token);
+  @Get('reset/:token')
+  async resetPassword(@Param('token') token: string) {
+    return this.forgotService.checkValidateToken(token);
   }
-  @Post('reset/:id/:token')
-  async resetPassword2(
-    @Param('id') id: number,
-    @Param('token') token: string,
-    @Body() body: any,
-  ) {
+
+  @Post('reset/:token')
+  async resetPassword2(@Param('token') token: string, @Body() body: any) {
     const password = body.password;
-    return this.forgotService.reset(id, token, password);
+    console.log(password);
+    console.log(token);
+    return this.forgotService.reset(token, password);
   }
 }

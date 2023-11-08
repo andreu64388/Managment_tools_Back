@@ -4,6 +4,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
+import { Role } from 'src/role/entities/role.entity';
+import { UserRole } from 'src/role/role.enum';
 
 @Injectable()
 export class UserService {
@@ -12,17 +14,24 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
   async create(createUserDto: CreateUserDto) {
-    const newUser = await this.userRepository.create(createUserDto);
+    const isUsedUser = await this.userRepository.findOne({
+      where: { email: createUserDto.email },
+    });
+
+    if (isUsedUser) {
+      throw new NotFoundException('This user already exists.');
+    }
+    const userRole = new Role();
+    userRole.name = UserRole.USER;
+
+    const newUser = await this.userRepository.create({
+      ...createUserDto,
+      roles: [userRole],
+    });
+
     await this.userRepository.save(newUser);
     return newUser;
   }
-
-  async createUserService(email: string) {
-    const newUser = await this.userRepository.create({ email });
-    await this.userRepository.save(newUser);
-    return newUser;
-  }
-
   findAll() {
     return `This action returns all user`;
   }

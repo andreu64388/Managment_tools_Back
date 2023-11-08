@@ -47,19 +47,19 @@ export class TokenService {
     await this.userRepository.save(tokenEntity);
   }
 
-  async removeToken(token: string, userId: number) {
+  async removeToken(token: string) {
     const tokenEntity = await this.userRepository.findOne({
-      where: { userId: userId, token: token },
+      where: { token: token },
     });
     if (tokenEntity) {
       await this.userRepository.remove(tokenEntity);
     }
   }
 
-  async accsessToken(token: string, userId: number) {
+  async accsessToken(token: string) {
     this.verifyToken(token);
     const tokenEntity = await this.userRepository.findOne({
-      where: { userId: userId, token: token },
+      where: { token: token },
     });
     return tokenEntity ? true : false;
   }
