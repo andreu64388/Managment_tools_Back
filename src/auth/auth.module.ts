@@ -8,6 +8,7 @@ import { UserModule } from 'src/user/user.module';
 import { MailModule } from 'src/mail/mail.module';
 import { ForgotModule } from './forgot/forgot.module';
 import { AuthController } from './auth.controller';
+import { GoogleModule } from './socials/google/google.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AuthController } from './auth.controller';
     TokenModule,
     MailModule,
     ForgotModule,
+    GoogleModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, PasswordService],

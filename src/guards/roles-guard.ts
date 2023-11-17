@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { TokenService } from 'src/auth/token/token.service';
 import { ROLES_KEY } from 'src/decorator/roles.decorator';
+import { ApiError } from 'src/exceptions/ApiError.exception';
 import { UserService } from 'src/user/user.service';
 
 @Injectable()
@@ -24,7 +25,6 @@ export class RolesGuard implements CanActivate {
       if (!requiredRoles) {
         return true;
       }
-
       if (token) {
         const user = await this.findUserByToken(token);
 
@@ -61,13 +61,13 @@ export class RolesGuard implements CanActivate {
       const decodedToken = this.tokenService.getEmailFromToken(token);
 
       if (!decodedToken) {
-        throw new Error('Invalid token');
+        throw new ApiError('Invalid token', 401);
       }
 
-      const user = await this.userService.findByEmail(decodedToken['email']);
+      const user = await this.userService.findByEmail(decodedToken);
       return user;
     } catch (error) {
-      throw new Error('Invalid token');
+      throw new ApiError('Invalid token', 401);
     }
   }
 }

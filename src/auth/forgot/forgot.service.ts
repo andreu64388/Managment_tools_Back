@@ -19,13 +19,12 @@ export class FogrotService {
 
   async forgot(email: string) {
     const currentTime = Date.now();
-
     if (
       this.resetLinkLastSent[email] &&
       currentTime - this.resetLinkLastSent[email] < this.resetLinkCooldown
     ) {
       throw new ApiError(
-        'Слишком частые запросы на сброс пароля. Подождите 5 минут.',
+        "You've already sent a reset link. Please wait a bit.",
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -34,8 +33,8 @@ export class FogrotService {
 
     if (!user) {
       throw new ApiError(
-        'Недействительный запрос на сброс пароля',
-        HttpStatus.NOT_FOUND,
+        'User with this email does not exist',
+        HttpStatus.BAD_REQUEST,
       );
     }
 
@@ -45,34 +44,39 @@ export class FogrotService {
     await this.mailService.sendUserConfirmation(user, token);
     await this.tokenService.saveToken(token, user.id);
 
-    console.log('all okey');
     return { message: 'Check your email' };
   }
 
   async reset(token: string, password: string) {
-    token = token.replace(/\+/g, '.');
-    const user = this.tokenService.getEmailFromToken(token);
-    const rightsToAccess = await this.checkValidateToken(token);
+    try {
+      token = token.replace(/\+/g, '.');
+      const user = this.tokenService.getEmailFromToken(token);
+      const rightsToAccess = await this.checkValidateToken(token);
 
-    if (rightsToAccess && user) {
-      const hashedPassword =
-        await this.passwordService.generatePassword(password);
-      console.log('user this' + user);
-      const updatedUser = await this.userService.updatePassword(
-        user.id,
-        hashedPassword,
-      );
+      if (rightsToAccess && user) {
+        const hashedPassword =
+          await this.passwordService.generatePassword(password);
+        const updatedUser = await this.userService.updatePassword(
+          user.id,
+          hashedPassword,
+        );
 
-      if (updatedUser) {
-        await this.tokenService.removeToken(token);
-        return { user: updatedUser };
+        if (updatedUser) {
+          await this.tokenService.removeToken(token);
+          return { user: updatedUser };
+        } else {
+          throw new ApiError(
+            'Failed to update the user.',
+            HttpStatus.UNAUTHORIZED,
+          );
+        }
       } else {
         throw new ApiError(
-          'Failed to update the user.',
+          'Token is invalid or expired.',
           HttpStatus.UNAUTHORIZED,
         );
       }
-    } else {
+    } catch (e) {
       throw new ApiError(
         'Token is invalid or expired.',
         HttpStatus.UNAUTHORIZED,

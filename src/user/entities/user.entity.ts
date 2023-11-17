@@ -1,4 +1,7 @@
 import { Role } from 'src/role/entities/role.entity';
+import { Plan } from 'src/template/plan/entities/plan.entity';
+import { UserTaskStatus } from 'src/template/task/entities/UserTaskStatus.entity';
+
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -7,6 +10,7 @@ import {
   UpdateDateColumn,
   ManyToMany,
   JoinTable,
+  OneToMany,
 } from 'typeorm';
 
 @Entity('users')
@@ -23,10 +27,19 @@ export class User {
   @CreateDateColumn()
   createAt: Date;
 
+  @Column({ nullable: true })
+  kindAuth:string;
+
   @UpdateDateColumn()
   updateAt: Date;
 
   @ManyToMany(() => Role, (role) => role.users)
   @JoinTable()
   roles: Role[];
+
+  @OneToMany(() => Plan, (plan) => plan.user)
+  plans: Plan[];
+
+  @OneToMany(() => UserTaskStatus, (userTaskStatus) => userTaskStatus.user)
+  taskStatuses: UserTaskStatus[];
 }

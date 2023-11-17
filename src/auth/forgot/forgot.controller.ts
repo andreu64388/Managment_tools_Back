@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { FogrotService } from './forgot.service';
+
 @Controller('forgot')
 export class ForgotController {
   constructor(private forgotService: FogrotService) {}
@@ -16,9 +17,7 @@ export class ForgotController {
 
   @Post('reset/:token')
   async resetPassword2(@Param('token') token: string, @Body() body: any) {
-    const password = body.password;
-    console.log(password);
-    console.log(token);
+    const password = body?.password;
     return this.forgotService.reset(token, password);
   }
 }

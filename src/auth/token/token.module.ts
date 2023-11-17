@@ -1,10 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { TokenService } from './token.service';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Token } from './entities/token.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+@Global()
 @Module({
   imports: [
     TypeOrmModule.forFeature([Token]),

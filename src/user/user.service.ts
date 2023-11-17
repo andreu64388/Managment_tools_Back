@@ -1,70 +1,104 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
-import { Role } from 'src/role/entities/role.entity';
 import { UserRole } from 'src/role/role.enum';
+import { RoleService } from 'src/role/role.service';
+import { ApiError } from 'src/exceptions/ApiError.exception';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly roleService: RoleService,
   ) {}
   async create(createUserDto: CreateUserDto) {
-    const isUsedUser = await this.userRepository.findOne({
-      where: { email: createUserDto.email },
-    });
+    try {
+      const isUsedUser = await this.userRepository.findOne({
+        where: { email: createUserDto.email },
+      });
 
-    if (isUsedUser) {
-      throw new NotFoundException('This user already exists.');
+      if (isUsedUser) {
+        throw new ApiError('The user with this email already exists', 400);
+      }
+      const userRole = await this.roleService.GetRoleByName(UserRole.USER);
+
+      const newUser = await this.userRepository.create({
+        ...createUserDto,
+        roles: [userRole],
+      });
+
+      await this.userRepository.save(newUser);
+      return this.findById(newUser.id);
+    } catch (e) {
+      throw new ApiError('Failed to create user', 500);
     }
-    const userRole = new Role();
-    userRole.name = UserRole.USER;
-
-    const newUser = await this.userRepository.create({
-      ...createUserDto,
-      roles: [userRole],
-    });
-
-    await this.userRepository.save(newUser);
-    return newUser;
-  }
-  findAll() {
-    return `This action returns all user`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  async createAdminIfNotExists(email, password) {
+    try {
+      const userRole = await this.roleService.GetRoleByName(UserRole.ADMIN);
+
+      const newUser = await this.userRepository.create({
+        email,
+        password,
+        roles: [userRole],
+      });
+
+      await this.userRepository.save(newUser);
+    } catch (e) {
+      throw new ApiError('Failed to create admin user', 500);
+    }
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
+  async createService(email: string, kindAuth: string) {
+    try {
+      const userRole = await this.roleService.GetRoleByName(UserRole.USER);
+      const createUserDto = {
+        email,
+        kindAuth,
+      };
+      const newUser = await this.userRepository.create({
+        ...createUserDto,
+        roles: [userRole],
+      });
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
-  }
-
-  async findByEmail(email: string) {
-    return await this.userRepository.findOne({ where: { email } });
+      await this.userRepository.save(newUser);
+      return this.findById(newUser.id);
+    } catch (e) {
+      throw new ApiError('Failed to create user', 500);
+    }
   }
 
   async updatePassword(id: number, newPassword: string) {
-    const user = await this.findById(id);
+    try {
+      const user = await this.findById(id);
 
-    if (!user) {
-      throw new NotFoundException(`Пользователь с id ${id} не найден.`);
+      if (!user) {
+        throw new ApiError('User not found', 404);
+      }
+      user.password = newPassword;
+      await this.userRepository.save(user);
+      return user;
+    } catch (e) {
+      throw new ApiError('Failed to update password', 500);
     }
-    user.password = newPassword;
-
-    await this.userRepository.save(user);
-
-    return user;
   }
   async findById(id: number) {
-    return await this.userRepository.findOne({ where: { id } });
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['roles'],
+    });
+    return user;
+  }
+
+  async findByEmail(email: string) {
+    const user = await this.userRepository.findOne({
+      where: { email },
+      relations: ['roles'],
+    });
+    return user;
   }
 }
