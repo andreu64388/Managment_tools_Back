@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as process from 'process';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, new ExpressAdapter());
@@ -26,8 +27,7 @@ async function bootstrap() {
 
   app.enableCors(corsOptions);
 
-  const port = configService.get<number>('PORT_APP');
-  await app.listen(port);
+  await app.listen(process.env.PORT, '0.0.0.0');
 }
 
 bootstrap();
