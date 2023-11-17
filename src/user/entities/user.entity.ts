@@ -28,7 +28,7 @@ export class User {
   createAt: Date;
 
   @Column({ nullable: true })
-  kindAuth:string;
+  kindAuth: string;
 
   @UpdateDateColumn()
   updateAt: Date;

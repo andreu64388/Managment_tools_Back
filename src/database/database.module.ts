@@ -23,7 +23,6 @@ import { User } from 'src/user/entities/user.entity';
         username: configService.get<string>('POSTGRES_USER'),
         password: configService.get<string>('POSTGRES_PASSWORD'),
         database: configService.get<string>('POSTGRES_DB'),
-        synchronize: true,
         entities: [
           User,
           Token,
@@ -36,6 +35,7 @@ import { User } from 'src/user/entities/user.entity';
           Task,
           UserTaskStatus,
         ],
+        ssl: { rejectUnauthorized: false }, // Добавьте эту строку для отключения проверки сертификата. Это не рекомендуется в боевой среде.
       }),
       inject: [ConfigService],
     }),

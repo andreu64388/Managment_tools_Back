@@ -67,8 +67,7 @@ export class TemplateController {
     @Query('limit') limit: number,
     @Req() req,
   ) {
-
+    console.log('1');
     return this.templateService.getAll(offset, limit, req.user);
   }
 }
-
