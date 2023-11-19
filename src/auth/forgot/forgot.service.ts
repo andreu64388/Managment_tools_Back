@@ -4,6 +4,7 @@ import { UserService } from 'src/user/user.service';
 import { MailService } from 'src/mail/mail.service';
 import { PasswordService } from '../password/password.service';
 import { ApiError } from 'src/exceptions/ApiError.exception';
+import { KindAuth } from '../kind.enum';
 
 @Injectable()
 export class FogrotService {
@@ -37,14 +38,20 @@ export class FogrotService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    if (user.kindAuth && user?.kindAuth === KindAuth.LOCAL) {
+      const token = await this.tokenService.generateToken(email, '5m');
+      this.resetLinkLastSent[email] = currentTime;
 
-    const token = await this.tokenService.generateToken(email, '5m');
-    this.resetLinkLastSent[email] = currentTime;
+      await this.mailService.sendUserConfirmation(user, token);
+      await this.tokenService.saveToken(token, user.id);
 
-    await this.mailService.sendUserConfirmation(user, token);
-    await this.tokenService.saveToken(token, user.id);
-
-    return { message: 'Check your email' };
+      return { message: 'Check your email' };
+    } else {
+      throw new ApiError(
+        'User with this email does not exist',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 
   async reset(token: string, password: string) {

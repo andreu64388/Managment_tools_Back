@@ -3,8 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as process from 'process';
+import * as compression from 'compression';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, new ExpressAdapter());
@@ -16,18 +15,11 @@ async function bootstrap() {
     origin: configService.get<string>('CORS_ORIGIN'),
   };
 
-  const config = new DocumentBuilder()
-    .setTitle('Currency API')
-    .setDescription('REST API for currency')
-    .setVersion('1.0')
-    .addTag('currency')
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
-
+  app.use(compression());
   app.enableCors(corsOptions);
 
-  await app.listen(process.env.PORT, '0.0.0.0');
+  const port = configService.get<number>('PORT_APP');
+  await app.listen(port);
 }
 
 bootstrap();

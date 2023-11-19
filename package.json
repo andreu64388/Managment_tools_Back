@@ -33,6 +33,7 @@
     "argon2": "^0.31.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
+    "compression": "^1.7.4",
     "date-fns": "^2.30.0",
     "handlebars": "^4.7.8",
     "moment": "^2.29.4",

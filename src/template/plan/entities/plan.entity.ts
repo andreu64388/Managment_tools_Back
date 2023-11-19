@@ -5,6 +5,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
 import { Week } from './week.entity';
 import { UserTaskStatus } from 'src/template/task/entities/UserTaskStatus.entity';
@@ -15,10 +16,10 @@ export class Plan {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: 'timestamp' })
   deadline: Date;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamp' })
   startDate: Date;
 
   @OneToMany(() => Week, (week) => week.plan, { cascade: true })

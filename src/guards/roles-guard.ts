@@ -67,7 +67,7 @@ export class RolesGuard implements CanActivate {
       const user = await this.userService.findByEmail(decodedToken);
       return user;
     } catch (error) {
-      throw new ApiError('Invalid token', 401);
+      throw error;
     }
   }
 }

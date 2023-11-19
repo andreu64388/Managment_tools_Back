@@ -36,12 +36,20 @@ export class TaskService {
       });
 
       task.template = template;
+
       await this.taskRepository.save(task);
 
-      return template;
+      const transformedTask = this.transformTask(task);
+
+      return transformedTask;
     } catch (error) {
       throw error;
     }
+  }
+
+  private transformTask(task: Task) {
+    const { title, duration, descriptions, id } = task;
+    return { title, duration, descriptions, id };
   }
 
   async update(updateTaskDto: UpdateTaskDto) {
@@ -59,7 +67,6 @@ export class TaskService {
       task.descriptions = updateTaskDto.descriptions;
 
       await this.taskRepository.save(task);
-
       return task;
     } catch (error) {
       throw error;
@@ -87,7 +94,7 @@ export class TaskService {
 
       await this.taskRepository.delete(taskId);
 
-      return task;
+      return taskId;
     } catch (e) {
       throw e;
     }
@@ -159,7 +166,8 @@ export class TaskService {
       }
       userTaskStatus.completed = true;
 
-      return await this.userTaskStatusRepository.save(userTaskStatus);
+      await this.userTaskStatusRepository.save(userTaskStatus);
+      return updateStatusDto.taskId;
     } catch (e) {
       throw e;
     }

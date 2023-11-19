@@ -35,7 +35,8 @@ import { User } from 'src/user/entities/user.entity';
           Task,
           UserTaskStatus,
         ],
-        ssl: { rejectUnauthorized: false }, // Добавьте эту строку для отключения проверки сертификата. Это не рекомендуется в боевой среде.
+        synchronize: true, // Внимание: synchronize=true используется только в разработке, в боевой среде лучше использовать миграции.
+        //ssl: { rejectUnauthorized: false },
       }),
       inject: [ConfigService],
     }),

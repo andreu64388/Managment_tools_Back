@@ -46,9 +46,9 @@ export class TaskController {
   @UseGuards(JwtAuthGuard)
   @Put('done')
   done(@Body() updateStatusDto: UpdateStatusDto, @Request() req) {
-    console.log('work');
     return this.taskService.taskComplted(updateStatusDto, req.user);
   }
+
   @UseGuards(JwtAuthGuard)
   @Get(':planId/:taskId')
   async taskCompleted(@Param() params: UpdateStatusDto, @Req() req) {

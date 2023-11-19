@@ -78,7 +78,6 @@ export class WeekService {
       throw new ApiError('Failed to delete weeks', 500);
     }
   }
-
   solve(arraySize: number, oneCount: number) {
     let newArray = Array(arraySize).fill(0);
     let low = 0,

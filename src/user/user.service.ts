@@ -33,7 +33,7 @@ export class UserService {
       await this.userRepository.save(newUser);
       return this.findById(newUser.id);
     } catch (e) {
-      throw new ApiError('Failed to create user', 500);
+      throw e;
     }
   }
 
@@ -49,7 +49,7 @@ export class UserService {
 
       await this.userRepository.save(newUser);
     } catch (e) {
-      throw new ApiError('Failed to create admin user', 500);
+      throw e;
     }
   }
 
@@ -68,7 +68,7 @@ export class UserService {
       await this.userRepository.save(newUser);
       return this.findById(newUser.id);
     } catch (e) {
-      throw new ApiError('Failed to create user', 500);
+      throw e;
     }
   }
 
@@ -83,7 +83,7 @@ export class UserService {
       await this.userRepository.save(user);
       return user;
     } catch (e) {
-      throw new ApiError('Failed to update password', 500);
+      throw e;
     }
   }
   async findById(id: number) {

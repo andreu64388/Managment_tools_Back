@@ -8,6 +8,7 @@ import {
   Delete,
   Param,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { PlanService } from './plan.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
@@ -23,14 +24,35 @@ export class PlanController {
     return await this.planService.create(createPlanDto, req.user);
   }
 
-  @Get()
-  async getAll(@Request() req) {
-    return await this.planService.getPlansByUserId(req.user);
+  @Get('completed')
+  async getAllCompleted(
+    @Request() req,
+    @Query('offset') offset: number,
+    @Query('limit') limit: number,
+  ) {
+    return await this.planService.getCompletedPlansByUserId(
+      req.user,
+      offset,
+      limit,
+    );
+  }
+
+  @Get('uncompleted')
+  async getAllUnCompleted(
+    @Request() req,
+    @Query('offset') offset: number,
+    @Query('limit') limit: number,
+  ) {
+    return await this.planService.getUncompletedPlansByUserId(
+      req.user,
+      offset,
+      limit,
+    );
   }
 
   @Get(':planId')
   async getPlan(@Param('planId', ParseIntPipe) planId: number, @Request() req) {
-    if (planId) return await this.planService.getPlanById(planId, req.user);
+    return await this.planService.getPlanById(planId, req.user);
   }
 
   @Delete(':planId')

@@ -18,19 +18,19 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ unique: true })
   email: string;
 
   @Column({ nullable: true })
   password: string | null;
 
-  @CreateDateColumn()
-  createAt: Date;
-
   @Column({ nullable: true })
   kindAuth: string;
 
-  @UpdateDateColumn()
+  @CreateDateColumn({ type: 'timestamp' })
+  createAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamp' })
   updateAt: Date;
 
   @ManyToMany(() => Role, (role) => role.users)

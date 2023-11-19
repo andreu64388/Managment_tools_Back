@@ -41,8 +41,17 @@ export class TemplateController {
   @UseGuards(RolesGuard)
   @Roles('admin')
   @Get(':templateId')
-  async GetTempplate(@Param('templateId') templateId: number) {
+  async GetTemplate(@Param('templateId') templateId: number) {
     return this.templateService.getTemplateById(templateId);
+  }
+
+  @Get('/tasks/:templateId')
+  async GetTemplateTasks(
+    @Param('templateId') templateId: number,
+    @Query('offset') offset: number,
+    @Query('limit') limit: number,
+  ) {
+    return this.templateService.getTaskByTemplateId(templateId, offset, limit);
   }
 
   @UseGuards(RolesGuard)
@@ -50,7 +59,6 @@ export class TemplateController {
   @Delete(':templateId')
   async deleteTemplate(@Param('templateId') templateId: number) {
     const templateInfo = await this.templateService.getTemplateById(templateId);
-
     const updateTaskPromises = templateInfo.template.tasks.map(async (task) => {
       task.template = null;
       return await this.taskService.update(task);
@@ -67,7 +75,6 @@ export class TemplateController {
     @Query('limit') limit: number,
     @Req() req,
   ) {
-    console.log('1');
     return this.templateService.getAll(offset, limit, req.user);
   }
 }

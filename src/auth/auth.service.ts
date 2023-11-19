@@ -62,7 +62,6 @@ export class AuthService {
     }
 
     const token = await this.tokenService.generateToken(email);
-
     return { user: isUserExist, token };
   }
 }

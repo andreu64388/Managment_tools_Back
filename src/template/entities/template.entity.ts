@@ -10,7 +10,9 @@ export class Template {
   @Column()
   name: string;
 
-  @OneToMany(() => Task, (task) => task.template, { onDelete: 'CASCADE' })
+  @OneToMany(() => Task, (task) => task.template, {
+    onDelete: 'CASCADE',
+  })
   tasks: Task[];
 
   @OneToMany(() => Plan, (plan) => plan.template, { onDelete: 'CASCADE' })
