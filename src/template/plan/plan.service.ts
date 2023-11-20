@@ -25,7 +25,6 @@ export class PlanService {
       const template = await this.templateService.findById(
         createPlanDto.templateId,
       );
-
       template.tasks = template.tasks.sort((a, b) => a.id - b.id);
 
       const parsedDeadline = new Date(createPlanDto.deadline);
@@ -39,14 +38,8 @@ export class PlanService {
       if (parsedDeadline <= startDate) {
         throw new ApiError('Selected date must be in the future', 400);
       }
-      const totalDays = differenceInDays(parsedDeadline, startDate) + 1;
 
-      const plan = this.planRepository.create({
-        deadline: parsedDeadline,
-        user,
-        template,
-        startDate,
-      });
+      const totalDays = differenceInDays(parsedDeadline, startDate) + 1;
 
       const minimumDaysRequired = template.tasks.length;
       if (totalDays < minimumDaysRequired) {
@@ -58,13 +51,28 @@ export class PlanService {
 
       const numWeeks = Math.floor(totalDays / 7) + (totalDays % 7 >= 1 ? 1 : 0);
       const countTask = template.tasks.length;
+
+      const maxTasksAllowed = countTask * 7;
+
+      if (totalDays > maxTasksAllowed) {
+        throw new ApiError(
+          `Maximum ${maxTasksAllowed} days allowed in the plan`,
+          400,
+        );
+      }
+      const plan = this.planRepository.create({
+        deadline: parsedDeadline,
+        user,
+        template,
+        startDate,
+      });
+
       const weeks = await this.weekService.generateWeeks(
         template,
         numWeeks,
         countTask,
         totalDays,
       );
-
       plan.weeks = weeks;
 
       const allTasks = template.tasks || [];
@@ -74,8 +82,8 @@ export class PlanService {
         plan,
         allTasks,
       );
-
       plan.userTaskStatuses = userTaskStatuses;
+
       await this.planRepository.save(plan);
 
       const populatedPlan = await this.planRepository.findOneOrFail({
@@ -330,7 +338,6 @@ export class PlanService {
 
   async getPlanById(planId: number, user: User) {
     try {
-
       const plan = await this.planRepository.findOne({
         where: { id: planId, user: { id: user.id } },
         relations: ['weeks', 'weeks.days', 'weeks.days.task', 'template'],
