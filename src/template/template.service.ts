@@ -104,6 +104,14 @@ export class TemplateService {
     return template;
   }
 
+  async findTemplateByIdWithRelations(
+    id: number,
+  ): Promise<Template | undefined> {
+    return await this.templateRepository.findOne({
+      where: { id },
+      relations: ['tasks', 'plans'],
+    });
+  }
   private isUserWithUserRole(user: User): boolean {
     return user?.roles?.some((role: any) => role.name === UserRole.USER);
   }

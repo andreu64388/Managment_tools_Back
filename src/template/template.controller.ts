@@ -16,12 +16,15 @@ import { Roles } from 'src/decorator/roles.decorator';
 import { RolesGuard } from 'src/guards/roles-guard';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { TaskService } from './task/task.service';
+import { ApiError } from 'src/exceptions/ApiError.exception';
+import { PlanService } from './plan/plan.service';
 
 @Controller('templates')
 export class TemplateController {
   constructor(
     private readonly templateService: TemplateService,
     private readonly taskService: TaskService,
+    private readonly planService: PlanService,
   ) {}
 
   @UseGuards(RolesGuard)
@@ -58,14 +61,25 @@ export class TemplateController {
   @Roles('admin')
   @Delete(':templateId')
   async deleteTemplate(@Param('templateId') templateId: number) {
-    const templateInfo = await this.templateService.getTemplateById(templateId);
-    const updateTaskPromises = templateInfo.template.tasks.map(async (task) => {
-      task.template = null;
-      return await this.taskService.update(task);
-    });
-    await Promise.all(updateTaskPromises);
+    try {
+      const templateInfo =
+        await this.templateService.findTemplateByIdWithRelations(templateId);
 
-    return await this.templateService.deleteTemplate(templateId);
+      await Promise.all(
+        templateInfo.tasks.map(async (task) => {
+          await this.taskService.delete(task.id);
+        }),
+      );
+
+      await Promise.all(
+        templateInfo.plans.map(async (plan) => {
+          await this.planService.removePlanAdmin(plan.id);
+        }),
+      );
+      return await this.templateService.deleteTemplate(templateId);
+    } catch (error) {
+      throw error;
+    }
   }
 
   @UseGuards(JwtAuthGuard)

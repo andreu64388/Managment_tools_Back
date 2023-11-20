@@ -496,6 +496,30 @@ export class PlanService {
     }
   }
 
+  async removePlanAdmin(planId: number) {
+    try {
+      const plan = await this.planRepository.findOne({
+        where: { id: planId },  
+        relations: [
+          'weeks',
+          'weeks.days',
+          'weeks.days.task',
+          'userTaskStatuses',
+        ],
+      });
+
+      if (!plan) {
+        throw new NotFoundException('Plan not found');
+      }
+
+      await this.weekService.deleteWeeks(plan.weeks);
+      await this.taskService.removeUserTaskStatusesAdmin(plan.id);
+      await this.planRepository.remove(plan);
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async getTask(planId: number, taskId: number, user: User) {
     try {
       const plan = await this.planRepository.findOne({

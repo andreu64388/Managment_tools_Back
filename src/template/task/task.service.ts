@@ -209,4 +209,16 @@ export class TaskService {
       throw e;
     }
   }
+
+  async removeUserTaskStatusesAdmin(planId: number) {
+    try {
+      const userTaskStatuses = await this.userTaskStatusRepository.find({
+        where: { plan: { id: planId } },
+      });
+
+      await this.userTaskStatusRepository.remove(userTaskStatuses);
+    } catch (e) {
+      throw e;
+    }
+  }
 }
