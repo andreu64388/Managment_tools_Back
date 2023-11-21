@@ -5,4 +5,13 @@ export class UpdateTemplateDto {
   name: string;
   @IsInt()
   templateId: number;
+
+  @IsInt()
+  prepTime: number;
+
+  @IsInt()
+  idealPreReq: number;
+
+  @IsInt()
+  duration: number;
 }

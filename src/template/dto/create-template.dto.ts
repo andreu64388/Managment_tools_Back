@@ -1,6 +1,15 @@
-import { IsString } from 'class-validator';
+import { IsString, IsInt } from 'class-validator';
 
 export class CreateTemplateDto {
   @IsString()
-  readonly name: string;
+  name: string;
+
+  @IsInt()
+  prepTime: number;
+
+  @IsInt()
+  idealPreReq: number;
+
+  @IsInt()
+  duration: number;
 }

@@ -3,7 +3,13 @@ import { CreatePlanDto } from './dto/create-plan.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TemplateService } from '../template.service';
-import { differenceInDays, isToday, isTomorrow } from 'date-fns';
+import {
+  addDays,
+  differenceInDays,
+  isToday,
+  isTomorrow,
+  format,
+} from 'date-fns';
 import { WeekService } from './services/week.service';
 import { Plan } from './entities/plan.entity';
 import { User } from 'src/user/entities/user.entity';
@@ -39,9 +45,24 @@ export class PlanService {
         throw new ApiError('Selected date must be in the future', 400);
       }
 
+      const prepTime = template.prepTime || 0;
+
+      const minAllowedDate = addDays(startDate, prepTime);
+
+      if (parsedDeadline < minAllowedDate) {
+        throw new ApiError(
+          `You must wait at least until ${format(
+            minAllowedDate,
+            'yyyy-MM-dd',
+          )} before selecting this date`,
+          400,
+        );
+      }
+
       const totalDays = differenceInDays(parsedDeadline, startDate) + 1;
 
-      const minimumDaysRequired = template.tasks.length;
+      const minimumDaysRequired = prepTime;
+
       if (totalDays < minimumDaysRequired) {
         throw new ApiError(
           `Minimum days required for this plan is ${minimumDaysRequired}`,
@@ -52,7 +73,7 @@ export class PlanService {
       const numWeeks = Math.floor(totalDays / 7) + (totalDays % 7 >= 1 ? 1 : 0);
       const countTask = template.tasks.length;
 
-      const maxTasksAllowed = countTask * 7;
+      const maxTasksAllowed = prepTime * 2;
 
       if (totalDays > maxTasksAllowed) {
         throw new ApiError(
@@ -60,6 +81,7 @@ export class PlanService {
           400,
         );
       }
+
       const plan = this.planRepository.create({
         deadline: parsedDeadline,
         user,
@@ -96,6 +118,7 @@ export class PlanService {
       throw error;
     }
   }
+
   async getCompletedPlansByUserId(
     user: User,
     offset: number = 0,
@@ -499,7 +522,7 @@ export class PlanService {
   async removePlanAdmin(planId: number) {
     try {
       const plan = await this.planRepository.findOne({
-        where: { id: planId },  
+        where: { id: planId },
         relations: [
           'weeks',
           'weeks.days',

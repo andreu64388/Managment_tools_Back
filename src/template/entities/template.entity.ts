@@ -10,6 +10,15 @@ export class Template {
   @Column()
   name: string;
 
+  @Column({ type: 'int', nullable: true })
+  prepTime: number;
+
+  @Column({ type: 'int', nullable: true })
+  idealPreReq: number;
+
+  @Column({ type: 'int', nullable: true })
+  duration: number;
+
   @OneToMany(() => Task, (task) => task.template, {
     onDelete: 'CASCADE',
   })

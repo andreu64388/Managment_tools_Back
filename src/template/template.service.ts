@@ -6,6 +6,7 @@ import { ApiError } from 'src/exceptions/ApiError.exception';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 import { User } from 'src/user/entities/user.entity';
 import { UserRole } from 'src/role/role.enum';
+import { CreateTemplateDto } from './dto/create-template.dto';
 
 @Injectable()
 export class TemplateService {
@@ -14,48 +15,79 @@ export class TemplateService {
     private readonly templateRepository: Repository<Template>,
   ) {}
 
-  async create(name: string): Promise<Template> {
-    const template = this.templateRepository.create({ name });
-    return this.templateRepository.save(template);
+  async create(createTemplateDto: CreateTemplateDto): Promise<Template> {
+    try {
+      const template = this.templateRepository.create({
+        name: createTemplateDto.name,
+        prepTime: createTemplateDto.prepTime,
+        idealPreReq: createTemplateDto.idealPreReq,
+        duration: createTemplateDto.duration,
+      });
+
+      return this.templateRepository.save(template);
+    } catch (e) {
+      throw new ApiError("Couldn't create template", 400);
+    }
   }
 
   async update(updateTemplateTemplate: UpdateTemplateDto) {
-    const template = await this.findTemplateById(
-      updateTemplateTemplate.templateId,
-    );
-    template.name = updateTemplateTemplate.name;
-    this.templateRepository.save(template);
+    try {
+      const template = await this.findTemplateById(
+        updateTemplateTemplate.templateId,
+      );
+      template.name = updateTemplateTemplate.name;
+      template.prepTime = updateTemplateTemplate.prepTime;
+      template.idealPreReq = updateTemplateTemplate.idealPreReq;
+      template.duration = updateTemplateTemplate.duration;
 
-    const templateWithoutTasks = {
-      id: template.id,
-      name: template.name,
-    };
+      await this.templateRepository.save(template);
 
-    return templateWithoutTasks;
+      const templateWithoutTasks = {
+        id: template.id,
+        name: template.name,
+        prepTime: template.prepTime,
+        idealPreReq: template.idealPreReq,
+        duration: template.duration,
+      };
+
+      return templateWithoutTasks;
+    } catch (e) {
+      throw new ApiError("Couldn't update template", 400);
+    }
   }
 
   async getAll(offset: number = 0, limit: number = 9, user: User) {
-    const templates = await this.templateRepository.find({
-      relations: ['tasks'],
-      skip: offset,
-      take: limit,
-    });
+    try {
+      const templates = await this.templateRepository.find({
+        relations: ['tasks'],
+        order: { id: 'ASC' },
+        skip: offset,
+        take: limit,
+      });
 
-    let templateInfo = templates.map((template) => ({
-      id: template.id,
-      name: template.name,
-      count: template.tasks.length,
-    }));
+      let templateInfo = templates.map((template) => ({
+        id: template.id,
+        name: template?.name,
+        count: template?.tasks?.length,
+        prepTime: template?.prepTime,
+        idealPreReq: template?.idealPreReq,
+        duration: template?.duration,
+      }));
 
-    if (this.isUserWithUserRole(user)) {
-      templateInfo = templateInfo.filter((el) => el.count !== 0);
+      if (this.isUserWithUserRole(user)) {
+        templateInfo = templateInfo.filter((el) => el.count !== 0);
+      }
+
+      if (templateInfo) return templateInfo;
+    } catch (e) {
+      throw new ApiError("Couldn't get templates", 400);
     }
-
-    return templateInfo;
   }
 
   async getTemplateById(id: number): Promise<any> {
     const template = await this.findTemplateById(id);
+
+    if (!template) throw new ApiError('Template not found', 404);
 
     template.tasks.sort((a, b) => a.id - b.id);
 
@@ -64,6 +96,9 @@ export class TemplateService {
       id: template.id,
       name: template.name,
       taskCount: taskCount,
+      prepTime: template?.prepTime,
+      idealPreReq: template?.idealPreReq,
+      duration: template?.duration,
     };
 
     return templateWithoutTasks;
@@ -76,6 +111,8 @@ export class TemplateService {
   ): Promise<any> {
     const template = await this.findTemplateById(id);
 
+    if (!template) throw new ApiError('Template not found', 404);
+
     template.tasks.sort((a, b) => a.id - b.id);
 
     const startIndex = Number(offset);
@@ -85,9 +122,11 @@ export class TemplateService {
   }
 
   async deleteTemplate(id: number): Promise<any> {
-    await this.findTemplateById(id);
+    const template = await this.findTemplateById(id);
 
-    await this.templateRepository.delete(id);
+    if (!template) throw new ApiError('Template not found', 404);
+
+    await this.templateRepository.delete(template.id);
     return { message: 'Template deleted successfully' };
   }
 

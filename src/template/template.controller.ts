@@ -18,6 +18,7 @@ import { UpdateTemplateDto } from './dto/update-template.dto';
 import { TaskService } from './task/task.service';
 import { ApiError } from 'src/exceptions/ApiError.exception';
 import { PlanService } from './plan/plan.service';
+import { CreateTemplateDto } from './dto/create-template.dto';
 
 @Controller('templates')
 export class TemplateController {
@@ -30,8 +31,8 @@ export class TemplateController {
   @UseGuards(RolesGuard)
   @Roles('admin')
   @Post()
-  async createTemplate(@Body('name') name: string) {
-    return this.templateService.create(name);
+  async createTemplate(@Body() createTemplateDto: CreateTemplateDto) {
+    return this.templateService.create(createTemplateDto);
   }
 
   @UseGuards(RolesGuard)
