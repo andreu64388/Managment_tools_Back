@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import * as compression from 'compression';
+import * as cors from 'cors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, new ExpressAdapter());
@@ -11,12 +12,8 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  const corsOptions = {
-    origin: configService.get<string>('CORS_ORIGIN'),
-  };
-
   app.use(compression());
-  app.enableCors(corsOptions);
+  app.use(cors());
 
   const apiPrefix = 'api';
   app.setGlobalPrefix(apiPrefix);
