@@ -18,6 +18,9 @@ async function bootstrap() {
   app.use(compression());
   app.enableCors(corsOptions);
 
+  const apiPrefix = 'api';
+  app.setGlobalPrefix(apiPrefix);
+
   const port = configService.get<number>('PORT_APP');
   await app.listen(port);
 }
