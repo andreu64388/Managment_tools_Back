@@ -4,8 +4,8 @@ import { Week } from './week.entity';
 
 @Entity('days')
 export class Day {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   dayNumber: Date;

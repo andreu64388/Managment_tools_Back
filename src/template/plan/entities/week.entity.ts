@@ -4,8 +4,8 @@ import { Plan } from './plan.entity';
 
 @Entity('weeks')
 export class Week {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @OneToMany(() => Day, (day) => day.week, { cascade: true })
   days: Day[];

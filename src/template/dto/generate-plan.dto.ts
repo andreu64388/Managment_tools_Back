@@ -1,5 +1,5 @@
 export class GeneratePlanDto {
   user: number;
-  template: number;
+  template: string;
   deadline: Date;
 }

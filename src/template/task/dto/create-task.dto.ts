@@ -1,8 +1,8 @@
 import { IsInt, IsString } from 'class-validator';
 
 export class CreateTaskDto {
-  @IsInt()
-  templateId: number;
+  @IsString()
+  templateId: string;
 
   @IsString()
   title: string;

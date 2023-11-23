@@ -34,7 +34,7 @@ export class TokenService {
     }
   }
 
-  async saveToken(token: string, userId: number) {
+  async saveToken(token: string, userId: string) {
     this.verifyToken(token);
     const tokenEntity = new Token();
     tokenEntity.token = token;

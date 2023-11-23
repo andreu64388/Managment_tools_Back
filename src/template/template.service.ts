@@ -7,6 +7,7 @@ import { UpdateTemplateDto } from './dto/update-template.dto';
 import { User } from 'src/user/entities/user.entity';
 import { UserRole } from 'src/role/role.enum';
 import { CreateTemplateDto } from './dto/create-template.dto';
+import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 
 @Injectable()
 export class TemplateService {
@@ -84,44 +85,63 @@ export class TemplateService {
     }
   }
 
-  async getTemplateById(id: number): Promise<any> {
-    const template = await this.findTemplateById(id);
+  async getTemplateById(id: string): Promise<any> {
+    try {
+      if (!uuidValidate(id)) {
+        throw new ApiError('Valid format id', 400);
+      }
+      const template = await this.findTemplateById(id);
 
-    if (!template) throw new ApiError('Template not found', 404);
+      if (!template) throw new ApiError('Template not found', 404);
 
-    template.tasks.sort((a, b) => a.id - b.id);
+      template.tasks.sort((a, b) => {
+        const dateA = a.createAt.getTime();
+        const dateB = b.createAt.getTime();
+        return dateA - dateB;
+      });
 
-    const taskCount = template.tasks.length;
-    const templateWithoutTasks = {
-      id: template.id,
-      name: template.name,
-      taskCount: taskCount,
-      prepTime: template?.prepTime,
-      idealPreReq: template?.idealPreReq,
-      duration: template?.duration,
-    };
+      const taskCount = template?.tasks?.length;
+      const templateWithoutTasks = {
+        id: template?.id,
+        name: template?.name,
+        taskCount: taskCount,
+        prepTime: template?.prepTime,
+        idealPreReq: template?.idealPreReq,
+        duration: template?.duration,
+      };
 
-    return templateWithoutTasks;
+      return templateWithoutTasks;
+    } catch (e) {
+      throw e;
+    }
   }
 
   async getTaskByTemplateId(
-    id: number,
+    id: string,
     offset: number = 0,
     limit: number = 5,
   ): Promise<any> {
-    const template = await this.findTemplateById(id);
+    try {
+      const template = await this.findTemplateById(id);
 
-    if (!template) throw new ApiError('Template not found', 404);
+      if (!template) throw new ApiError('Template not found', 404);
 
-    template.tasks.sort((a, b) => a.id - b.id);
+      template.tasks.sort((a, b) => {
+        const dateA = a.createAt.getTime();
+        const dateB = b.createAt.getTime();
+        return dateA - dateB;
+      });
 
-    const startIndex = Number(offset);
-    const endIndex = Number(offset) + Number(limit);
-    const slicedPlans = template.tasks.slice(startIndex, endIndex);
-    return slicedPlans;
+      const startIndex = Number(offset);
+      const endIndex = Number(offset) + Number(limit);
+      const slicedPlans = template.tasks.slice(startIndex, endIndex);
+      return slicedPlans;
+    } catch (e) {
+      throw e;
+    }
   }
 
-  async deleteTemplate(id: number): Promise<any> {
+  async deleteTemplate(id: string): Promise<any> {
     const template = await this.findTemplateById(id);
 
     if (!template) throw new ApiError('Template not found', 404);
@@ -130,11 +150,11 @@ export class TemplateService {
     return { message: 'Template deleted successfully' };
   }
 
-  async findById(id: number): Promise<Template> {
+  async findById(id: string): Promise<Template> {
     return this.findTemplateById(id);
   }
 
-  private async findTemplateById(id: number): Promise<Template> {
+  private async findTemplateById(id: string): Promise<Template> {
     const template = await this.templateRepository.findOne({
       where: { id },
       relations: ['tasks'],
@@ -144,7 +164,7 @@ export class TemplateService {
   }
 
   async findTemplateByIdWithRelations(
-    id: number,
+    id: string,
   ): Promise<Template | undefined> {
     return await this.templateRepository.findOne({
       where: { id },

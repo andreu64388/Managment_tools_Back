@@ -1,8 +1,8 @@
-import { IsInt, IsNotEmpty } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString } from 'class-validator';
 
 export class CreatePlanDto {
-  @IsInt()
-  templateId: number;
+  @IsString()
+  templateId: string;
 
   @IsNotEmpty({ message: 'Deadline cannot be empty' })
   deadline: string;

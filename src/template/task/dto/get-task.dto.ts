@@ -1,13 +1,9 @@
-import { IsInt, IsNotEmpty, IsPositive } from 'class-validator';
+import { IsNotEmpty } from 'class-validator';
 
 export class GetTaskDto {
   @IsNotEmpty()
-  @IsInt()
-  @IsPositive()
-  planId: number;
+  planId: string;
 
   @IsNotEmpty()
-  @IsInt()
-  @IsPositive()
-  taskId: number;
+  taskId: string;
 }

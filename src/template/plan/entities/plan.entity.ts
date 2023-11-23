@@ -13,8 +13,8 @@ import { Template } from 'src/template/entities/template.entity';
 
 @Entity('plans')
 export class Plan {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ type: 'timestamp' })
   deadline: Date;

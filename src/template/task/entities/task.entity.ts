@@ -1,5 +1,6 @@
 import {
   Column,
+  CreateDateColumn,
   Entity,
   ManyToOne,
   OneToMany,
@@ -11,14 +12,17 @@ import { UserTaskStatus } from './UserTaskStatus.entity';
 
 @Entity('tasks')
 export class Task {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   title: string;
 
   @Column()
   duration: number;
+
+  @CreateDateColumn({ type: 'timestamp' })
+  createAt: Date;
 
   @Column('text', { nullable: true })
   descriptions: string;

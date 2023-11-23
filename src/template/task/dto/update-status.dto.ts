@@ -1,9 +1,9 @@
-import { IsInt, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class UpdateStatusDto {
-  @IsInt()
-  planId: number;
+  @IsString()
+  planId: string;
 
-  @IsInt()
-  taskId: number;
+  @IsString()
+  taskId: string;
 }

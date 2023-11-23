@@ -3,8 +3,9 @@ import { IsInt, IsString } from 'class-validator';
 export class UpdateTemplateDto {
   @IsString()
   name: string;
-  @IsInt()
-  templateId: number;
+
+  @IsString()
+  templateId: string;
 
   @IsInt()
   prepTime: number;

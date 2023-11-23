@@ -15,6 +15,7 @@ import { Plan } from './entities/plan.entity';
 import { User } from 'src/user/entities/user.entity';
 import { TaskService } from '../task/task.service';
 import { ApiError } from 'src/exceptions/ApiError.exception';
+import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 
 @Injectable()
 export class PlanService {
@@ -31,7 +32,11 @@ export class PlanService {
       const template = await this.templateService.findById(
         createPlanDto.templateId,
       );
-      template.tasks = template.tasks.sort((a, b) => a.id - b.id);
+      template.tasks = template.tasks.sort((a, b) => {
+        const dateA = a.createAt.getTime();
+        const dateB = b.createAt.getTime();
+        return dateA - dateB;
+      });
 
       const parsedDeadline = new Date(createPlanDto.deadline);
 
@@ -359,8 +364,11 @@ export class PlanService {
     return modernPlan;
   }
 
-  async getPlanById(planId: number, user: User) {
+  async getPlanById(planId: string, user: User) {
     try {
+      if (!uuidValidate(planId)) {
+        throw new ApiError('Valid format id', 400);
+      }
       const plan = await this.planRepository.findOne({
         where: { id: planId, user: { id: user.id } },
         relations: ['weeks', 'weeks.days', 'weeks.days.task', 'template'],
@@ -461,7 +469,7 @@ export class PlanService {
     }
   }
 
-  async removeTaskFromPlan(planId: number, taskId: number, user: User) {
+  async removeTaskFromPlan(planId: string, taskId: string, user: User) {
     try {
       const plan = await this.planRepository.findOne({
         where: { id: planId, user: { id: user.id } },
@@ -486,15 +494,14 @@ export class PlanService {
       if (!taskFound) {
         throw new ApiError('Task not found in the plan', 404);
       }
-
       await this.planRepository.save(plan);
-      return taskId;
+      return { taskId };
     } catch (error) {
       throw error;
     }
   }
 
-  async removePlan(planId: number, user: User) {
+  async removePlan(planId: string, user: User) {
     try {
       const plan = await this.planRepository.findOne({
         where: { id: planId },
@@ -513,13 +520,14 @@ export class PlanService {
       await this.weekService.deleteWeeks(plan.weeks);
       await this.taskService.removeUserTaskStatuses(plan.id, user.id);
       await this.planRepository.remove(plan);
-      return planId;
+
+      return { planId };
     } catch (error) {
       throw error;
     }
   }
 
-  async removePlanAdmin(planId: number) {
+  async removePlanAdmin(planId: string) {
     try {
       const plan = await this.planRepository.findOne({
         where: { id: planId },
@@ -543,8 +551,11 @@ export class PlanService {
     }
   }
 
-  async getTask(planId: number, taskId: number, user: User) {
+  async getTask(planId: string, taskId: string, user: User) {
     try {
+      if (!uuidValidate(planId) || !uuidValidate(taskId)) {
+        throw new ApiError('Valid format id', 400);
+      }
       const plan = await this.planRepository.findOne({
         where: {
           id: planId,

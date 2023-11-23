@@ -1,11 +1,11 @@
 import { IsInt, IsString } from 'class-validator';
 
 export class UpdateTaskDto {
-  @IsInt()
-  taskId: number;
+  @IsString()
+  taskId: string;
 
-  @IsInt()
-  templateId: number;
+  @IsString()
+  templateId: string;
 
   @IsString()
   title: string;

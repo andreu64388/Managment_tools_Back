@@ -7,7 +7,6 @@ import {
   Request,
   Delete,
   Param,
-  ParseIntPipe,
   Query,
 } from '@nestjs/common';
 import { PlanService } from './plan.service';
@@ -51,21 +50,18 @@ export class PlanController {
   }
 
   @Get(':planId')
-  async getPlan(@Param('planId', ParseIntPipe) planId: number, @Request() req) {
+  async getPlan(@Param('planId') planId: string, @Request() req) {
     return await this.planService.getPlanById(planId, req.user);
   }
 
   @Delete(':planId')
-  async removePlan(
-    @Param('planId', ParseIntPipe) planId: number,
-    @Request() req,
-  ) {
+  async removePlan(@Param('planId') planId: string, @Request() req) {
     return await this.planService.removePlan(planId, req.user);
   }
   @Delete(':planId/remove/:taskId')
   async removeTaskFromPlan(
-    @Param('planId', ParseIntPipe) planId: number,
-    @Param('taskId', ParseIntPipe) taskId: number,
+    @Param('planId') planId: string,
+    @Param('taskId') taskId: string,
     @Request() req,
   ) {
     return await this.planService.removeTaskFromPlan(planId, taskId, req.user);
@@ -73,8 +69,8 @@ export class PlanController {
 
   @Get(':planId/:taskId')
   async getTask(
-    @Param('planId', ParseIntPipe) planId: number,
-    @Param('taskId', ParseIntPipe) taskId: number,
+    @Param('planId') planId: string,
+    @Param('taskId') taskId: string,
     @Request() req,
   ) {
     return await this.planService.getTask(planId, taskId, req.user);

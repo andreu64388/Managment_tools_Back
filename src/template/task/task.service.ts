@@ -11,6 +11,7 @@ import { UpdateStatusDto } from './dto/update-status.dto';
 import { ApiError } from 'src/exceptions/ApiError.exception';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { DayService } from '../plan/services/day.service';
+import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 
 @Global()
 @Injectable()
@@ -73,7 +74,7 @@ export class TaskService {
     }
   }
 
-  async delete(taskId: number) {
+  async delete(taskId: string) {
     try {
       const task = await this.taskRepository.findOne({
         where: { id: taskId },
@@ -94,7 +95,7 @@ export class TaskService {
 
       await this.taskRepository.delete(taskId);
 
-      return taskId;
+      return { taskId };
     } catch (e) {
       throw e;
     }
@@ -135,7 +136,7 @@ export class TaskService {
     }
   }
 
-  async getTaskStatus(planId: number, userId: number, taskId: number) {
+  async getTaskStatus(planId: string, userId: string, taskId: string) {
     try {
       const userTaskStatus = await this.userTaskStatusRepository.findOne({
         where: {
@@ -167,7 +168,7 @@ export class TaskService {
       userTaskStatus.completed = true;
 
       await this.userTaskStatusRepository.save(userTaskStatus);
-      return updateStatusDto.taskId;
+      return { taskId: updateStatusDto.taskId };
     } catch (e) {
       throw e;
     }
@@ -175,6 +176,9 @@ export class TaskService {
 
   async findOne(params: UpdateStatusDto, user: User) {
     try {
+      if (!uuidValidate(params.planId)) {
+        throw new ApiError('Valid format id', 400);
+      }
       const userTaskStatus = await this.userTaskStatusRepository.findOne({
         where: {
           plan: { id: params.planId },
@@ -198,7 +202,7 @@ export class TaskService {
     }
   }
 
-  async removeUserTaskStatuses(planId: number, userId: number) {
+  async removeUserTaskStatuses(planId: string, userId: string) {
     try {
       const userTaskStatuses = await this.userTaskStatusRepository.find({
         where: { plan: { id: planId }, user: { id: userId } },
@@ -210,7 +214,7 @@ export class TaskService {
     }
   }
 
-  async removeUserTaskStatusesAdmin(planId: number) {
+  async removeUserTaskStatusesAdmin(planId: string) {
     try {
       const userTaskStatuses = await this.userTaskStatusRepository.find({
         where: { plan: { id: planId } },

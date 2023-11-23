@@ -39,7 +39,7 @@ export class TaskController {
   @UseGuards(RolesGuard)
   @Roles('admin')
   @Delete(':taskId')
-  delete(@Param('taskId') taskId: number) {
+  delete(@Param('taskId') taskId: string) {
     return this.taskService.delete(taskId);
   }
 

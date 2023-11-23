@@ -72,7 +72,7 @@ export class UserService {
     }
   }
 
-  async updatePassword(id: number, newPassword: string) {
+  async updatePassword(id: string, newPassword: string) {
     try {
       const user = await this.findById(id);
 
@@ -86,7 +86,7 @@ export class UserService {
       throw e;
     }
   }
-  async findById(id: number) {
+  async findById(id: string) {
     const user = await this.userRepository.findOne({
       where: { id },
       relations: ['roles'],

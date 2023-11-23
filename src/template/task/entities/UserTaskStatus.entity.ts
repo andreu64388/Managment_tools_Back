@@ -5,8 +5,8 @@ import { Plan } from 'src/template/plan/entities/plan.entity';
 
 @Entity('user_task_status')
 export class UserTaskStatus {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @ManyToOne(() => User, (user) => user.taskStatuses, { cascade: true })
   user: User;

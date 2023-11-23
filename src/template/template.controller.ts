@@ -45,13 +45,15 @@ export class TemplateController {
   @UseGuards(RolesGuard)
   @Roles('admin')
   @Get(':templateId')
-  async GetTemplate(@Param('templateId') templateId: number) {
+  async GetTemplate(@Param('templateId') templateId: string) {
     return this.templateService.getTemplateById(templateId);
   }
 
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @Get('/tasks/:templateId')
   async GetTemplateTasks(
-    @Param('templateId') templateId: number,
+    @Param('templateId') templateId: string,
     @Query('offset') offset: number,
     @Query('limit') limit: number,
   ) {
@@ -61,7 +63,7 @@ export class TemplateController {
   @UseGuards(RolesGuard)
   @Roles('admin')
   @Delete(':templateId')
-  async deleteTemplate(@Param('templateId') templateId: number) {
+  async deleteTemplate(@Param('templateId') templateId: string) {
     try {
       const templateInfo =
         await this.templateService.findTemplateByIdWithRelations(templateId);
