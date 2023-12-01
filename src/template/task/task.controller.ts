@@ -13,7 +13,6 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { TaskService } from './task.service';
-import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { JwtAuthGuard } from 'src/guards/jwt-auth-guard.guard';
 import { RolesGuard } from 'src/guards/roles-guard';
@@ -38,6 +37,7 @@ export class TaskController {
     @Body() createTaskDto: any,
   ) {
     const videoPath = await this.videoService.uploadFile(video);
+    console.log(videoPath);
     return this.taskService.create(createTaskDto, videoPath);
   }
 
