@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { ApiError } from 'src/exceptions/ApiError.exception';
 
-const accsesFilesExtensions = [
+const accessFilesExtensions = [
   '.mp4',
   '.avi',
   '.mkv',
@@ -13,6 +13,7 @@ const accsesFilesExtensions = [
   '.flv',
   '.webm',
 ];
+
 @Injectable()
 export class VideoService {
   async sendVideo(videoPath: string, range: string, res) {
@@ -50,15 +51,17 @@ export class VideoService {
   }
 
   async uploadFile(file: Express.Multer.File): Promise<string> {
-    if (!accsesFilesExtensions.includes(path.extname(file.originalname))) {
+    if (!accessFilesExtensions.includes(path.extname(file.originalname))) {
       throw new ApiError('File type not supported', 400);
     }
 
     const fileName = `${uuidv4()}-${file.originalname}`;
-    const filePath = `./uploads/${fileName}`;
+    const filePath = path.join('uploads', fileName);
 
     return new Promise<string>((resolve, reject) => {
-      fs.mkdir('./uploads', { recursive: true }, (mkdirError) => {
+      const uploadDirectory = path.join(process.cwd(), 'uploads');
+
+      fs.mkdir(uploadDirectory, { recursive: true }, (mkdirError) => {
         if (mkdirError) {
           return reject(`Failed to create directory: ${mkdirError}`);
         }
@@ -75,9 +78,7 @@ export class VideoService {
 
   async getVideoPath(videoName: string): Promise<string> {
     try {
-      const parentDirectory = path.join(__dirname, '..', '..');
-      const uploadsDirectory = path.join(parentDirectory, 'uploads');
-      const videoPath = path.join(uploadsDirectory, videoName);
+      const videoPath = path.join(process.cwd(), 'uploads', videoName);
 
       if (!fs.existsSync(videoPath)) {
         throw new ApiError('Video not found', 404);
@@ -97,7 +98,6 @@ export class VideoService {
 
       return true;
     } catch (error) {
-      console.error(`Failed to delete video: ${error}`);
       throw new Error(`Failed to delete video: ${error}`);
     }
   }

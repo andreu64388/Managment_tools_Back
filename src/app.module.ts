@@ -7,9 +7,6 @@ import { ConfigModule } from '@nestjs/config';
 import { RoleModule } from './role/role.module';
 import { TemplateModule } from './template/template.module';
 import { MulterModule } from '@nestjs/platform-express';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
-import { VideoModule } from './video/video.module';
 
 @Module({
   imports: [
