@@ -61,7 +61,7 @@ export class TemplateService {
     try {
       const templates = await this.templateRepository.find({
         relations: ['tasks'],
-        order: { id: 'ASC' },
+        order: { createAt: 'ASC' },
         skip: offset,
         take: limit,
       });

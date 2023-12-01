@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  CreateDateColumn,
+} from 'typeorm';
 import { Task } from '../task/entities/task.entity';
 import { Plan } from '../plan/entities/plan.entity';
 
@@ -26,4 +32,7 @@ export class Template {
 
   @OneToMany(() => Plan, (plan) => plan.template, { onDelete: 'CASCADE' })
   plans: Plan[];
+
+  @CreateDateColumn({ type: 'timestamp' })
+  createAt: Date;
 }
