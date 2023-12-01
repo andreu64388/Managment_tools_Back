@@ -50,6 +50,9 @@ export class VideoService {
   }
 
   async uploadFile(file: Express.Multer.File): Promise<string> {
+    if (!file || !file.originalname) {
+      throw new ApiError('Invalid file object', 400);
+    }
     if (!accessFilesExtensions.includes(path.extname(file.originalname))) {
       throw new ApiError('File type not supported', 400);
     }
@@ -77,6 +80,9 @@ export class VideoService {
 
   async getVideoPath(videoName: string): Promise<string> {
     try {
+      if (!videoName) {
+        throw new ApiError('Invalid file object', 400);
+      }
       const videoPath = path.join(process.cwd(), 'uploads', videoName);
 
       if (!fs.existsSync(videoPath)) {
