@@ -16,7 +16,7 @@ export class Plan {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'timestamp' })
+  @Column()
   deadline: Date;
 
   @Column({ type: 'timestamp' })

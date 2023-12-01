@@ -10,12 +10,14 @@ import { Week } from 'src/template/plan/entities/week.entity';
 import { UserTaskStatus } from 'src/template/task/entities/UserTaskStatus.entity';
 import { Task } from 'src/template/task/entities/task.entity';
 import { User } from 'src/user/entities/user.entity';
+import { DayTask } from 'src/template/plan/entities/dayTask';
 
 @Module({
   imports: [
     ConfigModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
+
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         host: configService.get<string>('POSTGRES_HOST'),
@@ -33,10 +35,10 @@ import { User } from 'src/user/entities/user.entity';
           Week,
           Day,
           Task,
+          DayTask,
           UserTaskStatus,
         ],
-        synchronize: true, // Внимание: synchronize=true используется только в разработке, в боевой среде лучше использовать миграции.
-        //ssl: { rejectUnauthorized: false },
+        synchronize: true,
       }),
       inject: [ConfigService],
     }),

@@ -7,7 +7,7 @@ import { Task } from './entities/task.entity';
 import { UserTaskStatus } from './entities/UserTaskStatus.entity';
 import { UserModule } from 'src/user/user.module';
 import { PlanModule } from '../plan/plan.module';
-import { DayService } from '../plan/services/day.service';
+import { VideoModule } from 'src/video/video.module';
 
 @Module({
   imports: [
@@ -15,6 +15,7 @@ import { DayService } from '../plan/services/day.service';
     UserModule,
     forwardRef(() => TemplateModule),
     forwardRef(() => PlanModule),
+    VideoModule,
   ],
   controllers: [TaskController],
   providers: [TaskService],

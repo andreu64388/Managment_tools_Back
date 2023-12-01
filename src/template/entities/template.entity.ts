@@ -13,8 +13,8 @@ export class Template {
   @Column({ type: 'int', nullable: true })
   prepTime: number;
 
-  @Column({ type: 'int', nullable: true })
-  idealPreReq: number;
+  @Column({ nullable: true })
+  idealPreReq: string;
 
   @Column({ type: 'int', nullable: true })
   duration: number;

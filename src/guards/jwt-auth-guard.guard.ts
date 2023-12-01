@@ -16,6 +16,7 @@ export class JwtAuthGuard implements CanActivate {
     try {
       if (token) {
         const user = await this.findUserByToken(token);
+
         if (user) {
           request.user = user;
           return true;

@@ -6,6 +6,7 @@ import { Template } from 'src/template/entities/template.entity';
 import { DayService } from './day.service';
 import { Task } from 'src/template/task/entities/task.entity';
 import { ApiError } from 'src/exceptions/ApiError.exception';
+import { addDays } from 'date-fns';
 
 @Injectable()
 export class WeekService {
@@ -27,45 +28,95 @@ export class WeekService {
       let currentDay = new Date();
       let taskIndex = 0;
 
-      const distribution = this.solve(totalDays, countTask);
+      if (totalDays >= countTask) {
+        let distribution = this.solve(totalDays, countTask);
 
-      for (let i = 0; i < numWeeks; i++) {
-        const weekTasks: Task[] = [];
-        const daysInWeek = Math.min(7, totalDays - i * 7);
-        let hasTaskInWeek = false;
+        for (let i = 0; i < numWeeks; i++) {
+          const weekTasks: Task[] = [];
+          const daysInWeek = Math.min(7, totalDays - i * 7);
 
-        for (let k = 0; k < daysInWeek; k++) {
-          const dayIndex = i * 7 + k;
-          if (dayIndex < totalDays) {
-            if (distribution[dayIndex] === 1 && taskIndex < tasks.length) {
-              weekTasks.push(tasks[taskIndex]);
-              taskIndex++;
-              hasTaskInWeek = true;
-            } else {
-              weekTasks.push(null);
+          for (let k = 0; k < daysInWeek; k++) {
+            const dayIndex = i * 7 + k;
+            if (dayIndex < totalDays) {
+              if (distribution[dayIndex] > 0) {
+                for (let j = 0; j < distribution[dayIndex]; j++) {
+                  if (taskIndex < tasks.length) {
+                    weekTasks.push(tasks[taskIndex]);
+                    taskIndex++;
+                  }
+                }
+                // Add 1 day for each task, considering distribution
+                currentDay.setDate(currentDay.getDate() + 1);
+              } else {
+                // If no tasks, still add 1 day
+                currentDay.setDate(currentDay.getDate() + 1);
+              }
             }
           }
-        }
 
-        if (hasTaskInWeek) {
-          const week = this.weekRepository.create({
-            days: await this.dayService.generateDays(
-              weekTasks.filter((task) => task !== null),
-              currentDay,
-              daysInWeek,
-            ),
-          });
-          weeks.push(week);
-        }
+          // Add 6 more days to ensure a week gap
+          currentDay.setDate(currentDay.getDate() + 6);
 
-        const daysAdded = hasTaskInWeek ? daysInWeek : 0;
-        currentDay.setDate(currentDay.getDate() + daysAdded);
+          const nonEmptyWeekTasks = weekTasks.filter((task) => task !== null);
+          if (nonEmptyWeekTasks.length > 0) {
+            const week = this.weekRepository.create({
+              days: await this.dayService.generateDays(
+                nonEmptyWeekTasks,
+                currentDay,
+                distribution.slice(i * 7, i * 7 + daysInWeek),
+              ),
+            });
+            weeks.push(week);
+          }
+        }
+      } else {
+        let distribution: any = this.fillDistribution(totalDays, countTask);
+
+        for (let i = 0; i < numWeeks; i++) {
+          const weekTasks: Task[] = [];
+          const daysInWeek = Math.min(7, totalDays - i * 7);
+
+          for (let k = 0; k < daysInWeek; k++) {
+            const dayIndex = i * 7 + k;
+            if (dayIndex < totalDays) {
+              for (let j = 0; j < distribution[dayIndex]; j++) {
+                if (taskIndex < tasks.length) {
+                  weekTasks.push(tasks[taskIndex]);
+                  taskIndex++;
+                }
+              }
+            }
+          }
+
+          const nonEmptyWeekTasks = weekTasks.filter((task) => task !== null);
+          if (nonEmptyWeekTasks.length > 0) {
+            const week = this.weekRepository.create({
+              days: await this.dayService.generateDays(
+                nonEmptyWeekTasks,
+                currentDay,
+                distribution.slice(i * 7, i * 7 + daysInWeek),
+              ),
+            });
+            weeks.push(week);
+          }
+        }
       }
 
       return weeks;
     } catch (e) {
       throw new ApiError('Failed to generate weeks', 500);
     }
+  }
+
+  fillDistribution(totalDays: number, countTask: number) {
+    let distribution: any = Array.from({ length: totalDays }).fill(0);
+    let remainingTasks = countTask;
+
+    for (let i = 0; i < remainingTasks; i++) {
+      distribution[i % totalDays]++;
+    }
+
+    return distribution;
   }
 
   async deleteWeeks(weeks: Week[]): Promise<void> {

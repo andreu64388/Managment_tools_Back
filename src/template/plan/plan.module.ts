@@ -11,13 +11,16 @@ import { Week } from './entities/week.entity';
 import { Day } from './entities/day.entity';
 import { TaskModule } from '../task/task.module';
 import { UserTaskStatus } from '../task/entities/UserTaskStatus.entity';
+import { DayTask } from './entities/dayTask';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Plan]),
-    TypeOrmModule.forFeature([Day]),
+    TypeOrmModule.forFeature([Day, DayTask]),
     TypeOrmModule.forFeature([Week]),
+
     TypeOrmModule.forFeature([UserTaskStatus]),
+
     UserModule,
     forwardRef(() => TaskModule),
     forwardRef(() => TemplateModule),

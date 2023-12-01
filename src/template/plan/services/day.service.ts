@@ -4,45 +4,104 @@ import { Repository } from 'typeorm';
 import { Day } from '../entities/day.entity';
 import { Task } from 'src/template/task/entities/task.entity';
 import { addDays } from 'date-fns';
+import { DayTask } from './../entities/dayTask';
+import { TaskService } from 'src/template/task/task.service';
 
 @Injectable()
 export class DayService {
   constructor(
     @InjectRepository(Day)
     private readonly dayRepository: Repository<Day>,
+    @InjectRepository(DayTask)
+    private readonly dayTaskRepository: Repository<DayTask>,
   ) {}
 
   async generateDays(
     tasks: Task[],
     startDate: Date,
-    totalDays: number,
+    countTaskDistribution: number[],
   ): Promise<Day[]> {
     const days: Day[] = [];
     let taskIndex = 0;
 
-    for (let i = 0; i < totalDays; i++) {
-      const currentDay = addDays(startDate, i);
+    try {
+      for (let i = 0; i < countTaskDistribution.length; i++) {
+        const currentDay = addDays(startDate, i);
 
-      let selectedTask = null;
-      if (taskIndex < tasks.length) {
-        selectedTask = tasks[taskIndex];
-        taskIndex++;
+        const dayTasks: Task[] = [];
+        for (let j = 0; j < countTaskDistribution[i]; j++) {
+          if (taskIndex < tasks.length) {
+            dayTasks.push(tasks[taskIndex]);
+            taskIndex++;
+          }
+        }
+
+        if (dayTasks.length > 0) {
+          const day = this.dayRepository.create({
+            dayNumber: currentDay,
+          });
+
+          const savedDay = await this.dayRepository.save(day);
+          days.push(savedDay);
+
+          await Promise.all(
+            dayTasks.map(async (task) => {
+              const dayTask = this.dayTaskRepository.create({
+                day: savedDay,
+                task,
+              });
+              await this.dayTaskRepository.save(dayTask);
+            }),
+          );
+        }
       }
 
-      if (selectedTask !== null) {
-        const day = this.dayRepository.create({
-          dayNumber: currentDay,
-          task: selectedTask,
-        });
-        const savedDay = await this.dayRepository.save(day);
-        days.push(savedDay);
-      }
+      return days;
+    } catch (error) {
+      // Handle the error as needed
+      console.error('Error generating days:', error.message);
+      throw new Error('Failed to generate days');
     }
+  }
 
-    return days;
+  async GetTaskByDayTaskId(day: Day) {
+    try {
+      const dayTasks = await this.dayTaskRepository.find({
+        where: { day: day },
+        relations: ['task'],
+      });
+
+      return dayTasks;
+    } catch (error) {
+      console.error('Error getting day tasks:', error.message);
+      throw new Error('Failed to get day tasks');
+    }
+  }
+
+  async deleteDayTasks(dayTasks: DayTask[]): Promise<void> {
+    try {
+      const dayTaskIds = dayTasks.map((dayTask) => dayTask.id);
+
+      if (dayTaskIds.length > 0) {
+        await this.dayTaskRepository.delete(dayTaskIds);
+      }
+    } catch (error) {
+      console.error('Error deleting day tasks:', error.message);
+      throw new Error('Failed to delete day tasks');
+    }
   }
 
   async deleteDays(days: Day[]): Promise<void> {
-    await this.dayRepository.remove(days);
+    try {
+      await this.deleteDayTasks(days.map((day) => day.dayTasks).flat());
+      const dayIds = days.map((day) => day.id);
+
+      if (dayIds.length > 0) {
+        await this.dayRepository.delete(dayIds);
+      }
+    } catch (error) {
+      console.error('Error deleting days:', error.message);
+      throw new Error('Failed to delete days');
+    }
   }
 }

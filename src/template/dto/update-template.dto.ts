@@ -10,8 +10,8 @@ export class UpdateTemplateDto {
   @IsInt()
   prepTime: number;
 
-  @IsInt()
-  idealPreReq: number;
+  @IsString()
+  idealPreReq: string;
 
   @IsInt()
   duration: number;

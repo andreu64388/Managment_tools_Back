@@ -19,6 +19,7 @@ import { TaskService } from './task/task.service';
 import { ApiError } from 'src/exceptions/ApiError.exception';
 import { PlanService } from './plan/plan.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
+import { VideoService } from 'src/video/video.service';
 
 @Controller('templates')
 export class TemplateController {

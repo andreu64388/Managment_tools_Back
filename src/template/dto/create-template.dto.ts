@@ -1,4 +1,4 @@
-import { IsString, IsInt } from 'class-validator';
+import { IsString, IsInt, isString } from 'class-validator';
 
 export class CreateTemplateDto {
   @IsString()
@@ -7,8 +7,8 @@ export class CreateTemplateDto {
   @IsInt()
   prepTime: number;
 
-  @IsInt()
-  idealPreReq: number;
+  @IsString()
+  idealPreReq: string;
 
   @IsInt()
   duration: number;

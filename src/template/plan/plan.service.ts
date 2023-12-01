@@ -6,16 +6,20 @@ import { TemplateService } from '../template.service';
 import {
   addDays,
   differenceInDays,
+  isAfter,
   isToday,
   isTomorrow,
-  format,
+  parseISO,
+  startOfDay,
 } from 'date-fns';
 import { WeekService } from './services/week.service';
 import { Plan } from './entities/plan.entity';
 import { User } from 'src/user/entities/user.entity';
 import { TaskService } from '../task/task.service';
 import { ApiError } from 'src/exceptions/ApiError.exception';
-import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
+import { validate as uuidValidate } from 'uuid';
+import { parse } from 'date-fns';
+import { DayService } from './services/day.service';
 
 @Injectable()
 export class PlanService {
@@ -25,6 +29,7 @@ export class PlanService {
     private readonly templateService: TemplateService,
     private readonly weekService: WeekService,
     private readonly taskService: TaskService,
+    private readonly dayService: DayService,
   ) {}
 
   async create(createPlanDto: CreatePlanDto, user: User) {
@@ -50,42 +55,18 @@ export class PlanService {
         throw new ApiError('Selected date must be in the future', 400);
       }
 
-      const prepTime = template.prepTime || 0;
-
-      const minAllowedDate = addDays(startDate, prepTime);
-
-      if (parsedDeadline < minAllowedDate) {
-        throw new ApiError(
-          `You must wait at least until ${format(
-            minAllowedDate,
-            'yyyy-MM-dd',
-          )} before selecting this date`,
-          400,
-        );
-      }
-
       const totalDays = differenceInDays(parsedDeadline, startDate) + 1;
 
-      const minimumDaysRequired = prepTime;
-
-      if (totalDays < minimumDaysRequired) {
-        throw new ApiError(
-          `Minimum days required for this plan is ${minimumDaysRequired}`,
-          400,
-        );
-      }
-
-      const numWeeks = Math.floor(totalDays / 7) + (totalDays % 7 >= 1 ? 1 : 0);
       const countTask = template.tasks.length;
+      let tasksPerDay: number;
 
-      const maxTasksAllowed = prepTime * 2;
-
-      if (totalDays > maxTasksAllowed) {
-        throw new ApiError(
-          `Maximum ${maxTasksAllowed} days allowed in the plan`,
-          400,
-        );
+      if (totalDays >= countTask) {
+        tasksPerDay = 1;
+      } else {
+        tasksPerDay = Math.ceil(countTask / totalDays);
       }
+
+      tasksPerDay = Math.min(tasksPerDay, totalDays);
 
       const plan = this.planRepository.create({
         deadline: parsedDeadline,
@@ -94,12 +75,15 @@ export class PlanService {
         startDate,
       });
 
+      const numWeeks = Math.floor(totalDays / 7) + (totalDays % 7 >= 1 ? 1 : 0);
+
       const weeks = await this.weekService.generateWeeks(
         template,
         numWeeks,
         countTask,
         totalDays,
       );
+
       plan.weeks = weeks;
 
       const allTasks = template.tasks || [];
@@ -115,7 +99,12 @@ export class PlanService {
 
       const populatedPlan = await this.planRepository.findOneOrFail({
         where: { id: plan.id },
-        relations: ['weeks', 'weeks.days', 'weeks.days.task'],
+        relations: [
+          'weeks',
+          'weeks.days',
+          'weeks.days.dayTasks',
+          'weeks.days.dayTasks.task',
+        ],
       });
 
       return populatedPlan;
@@ -123,7 +112,6 @@ export class PlanService {
       throw error;
     }
   }
-
   async getCompletedPlansByUserId(
     user: User,
     offset: number = 0,
@@ -132,185 +120,71 @@ export class PlanService {
     try {
       const plans = await this.planRepository.find({
         where: { user: { id: user.id } },
-        relations: ['weeks', 'weeks.days', 'weeks.days.task', 'template'],
+        relations: [
+          'weeks',
+          'weeks.days',
+          'weeks.days.dayTasks',
+          'weeks.days.dayTasks.task',
+          'template',
+        ],
         order: { deadline: 'ASC' },
       });
 
-      const completedPlans = [];
-
-      await Promise.all(
+      const completedPlans = await Promise.all(
         plans.map(async (plan) => {
-          const modernPlan = await this.transformPlan(plan);
+          const modernPlan = await this.transformPlans(plan);
 
           const filteredModernPlan = modernPlan.filter(
             (week) => week.days.length > 0,
           );
 
-          const totalTasks = filteredModernPlan
-            .flatMap((week) => week.days)
-            .filter(
-              (day) => day.task && day.task.completed !== undefined,
-            ).length;
+          const totalTasks = new Set<string>();
 
-          if (totalTasks === 0) {
-            return;
+          filteredModernPlan
+            .flatMap((week) => week.days)
+            .forEach((day) => {
+              day.tasks.forEach((task) => {
+                totalTasks.add(task.id);
+              });
+            });
+
+          if (totalTasks.size === 0) {
+            return null;
           }
 
           const completedTasks = filteredModernPlan
             .flatMap((week) => week.days)
-            .filter((day) => day.task && day.task.completed === true).length;
-
-          const planInfo = {
-            id: plan.id,
-            name: totalTasks > 0 ? plan.template?.name || null : null,
-            deadline: plan.deadline,
-            totalTasks,
-          };
-
-          if (completedTasks === totalTasks) {
-            completedPlans.push(planInfo);
-          }
-        }),
-      );
-
-      const startIndex = Number(offset);
-      const endIndex = Number(offset) + Number(limit);
-      const slicedPlans = completedPlans.slice(startIndex, endIndex);
-
-      return slicedPlans;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async getUncompletedPlansByUserId(
-    user: User,
-    offset: number = 0,
-    limit: number = 5,
-  ) {
-    try {
-      const plans = await this.planRepository.find({
-        where: { user: { id: user.id } },
-        relations: ['weeks', 'weeks.days', 'weeks.days.task', 'template'],
-        order: { deadline: 'ASC' },
-      });
-
-      const uncompletedPlans = [];
-      const today = new Date();
-
-      await Promise.all(
-        plans.map(async (plan) => {
-          const modernPlan = await Promise.all(
-            plan.weeks.map(async (week) => {
-              const modernWeek = await Promise.all(
-                week.days.map(async (day) => {
-                  const taskStatus = await this.taskService.getTaskStatus(
-                    plan?.id,
-                    plan?.user?.id,
-                    day?.task?.id,
-                  );
-                  const completed =
-                    taskStatus && taskStatus.completed !== undefined
-                      ? taskStatus.completed
-                      : false;
-
-                  const isValidTask =
-                    day.task &&
-                    day.task.id !== undefined &&
-                    day.task.title !== undefined;
-
-                  if (!isValidTask) {
-                    return null;
-                  }
-
-                  return {
-                    ...day,
-                    task: {
-                      ...day.task,
-                      completed,
-                    },
-                  };
-                }),
-              );
-
-              const filteredWeek = modernWeek.filter((day) => day !== null);
-
-              return {
-                ...week,
-                days: filteredWeek,
-              };
-            }),
-          );
-
-          const filteredModernPlan = modernPlan.filter(
-            (week) => week.days.length > 0,
-          );
-
-          const totalTasks = filteredModernPlan
-            .flatMap((week) => week.days)
-            .filter(
-              (day) => day.task && day.task.completed !== undefined,
-            ).length;
-
-          if (totalTasks === 0) {
-            return;
-          }
-
-          const upcomingTasks = filteredModernPlan
-            .flatMap((week) => week.days)
-            .filter(
-              (day) =>
-                day.task &&
-                day.task.completed !== undefined &&
-                !day.task.completed &&
-                (isToday(new Date(day.dayNumber)) ||
-                  new Date(day.dayNumber) > today),
-            )
-            .sort((a, b) =>
-              differenceInDays(new Date(a.dayNumber), new Date(b.dayNumber)),
+            .reduce(
+              (acc, day) =>
+                acc +
+                (day.tasks
+                  ? day.tasks.filter((task) => task.completed === true).length
+                  : 0),
+              0,
             );
 
-          const upcomingTask =
-            upcomingTasks.length > 0 ? upcomingTasks[0] : null;
-
-          const completedTasks = filteredModernPlan
-            .flatMap((week) => week.days)
-            .filter((day) => day.task && day.task.completed === true).length;
-
-          const nearestDateTask = filteredModernPlan
-            .flatMap((week) => week.days)
-            .filter(
-              (day) =>
-                day.task &&
-                day.task.completed !== undefined &&
-                !day.task.completed &&
-                (isToday(new Date(day.dayNumber)) ||
-                  new Date(day.dayNumber) > today),
-            )
-            .sort((a, b) =>
-              differenceInDays(new Date(a.dayNumber), new Date(b.dayNumber)),
-            )
-            .pop();
-
           const planInfo = {
             id: plan.id,
-            name: totalTasks > 0 ? plan.template?.name || null : null,
+            name: totalTasks.size > 0 ? plan.template?.name || null : null,
             deadline: plan.deadline,
-            totalTasks,
-            upcomingTask,
+            totalTasks: totalTasks.size,
           };
 
-          if (completedTasks !== totalTasks) {
-            uncompletedPlans.push(planInfo);
+          if (completedTasks === totalTasks.size) {
+            return planInfo;
           }
+
+          return null;
         }),
       );
 
+      const validCompletedPlans = completedPlans.filter(
+        (completedPlan) => completedPlan !== null,
+      );
+
       const startIndex = Number(offset);
-
       const endIndex = Number(offset) + Number(limit);
-
-      const slicedPlans = uncompletedPlans.slice(startIndex, endIndex);
+      const slicedPlans = validCompletedPlans.slice(startIndex, endIndex);
 
       return slicedPlans;
     } catch (error) {
@@ -318,36 +192,53 @@ export class PlanService {
     }
   }
 
-  private async transformPlan(plan: any) {
+  private async transformPlans(plan: any) {
     const modernPlan = await Promise.all(
       plan.weeks.map(async (week) => {
         const modernWeek = await Promise.all(
           week.days.map(async (day) => {
-            const taskStatus = await this.taskService.getTaskStatus(
-              plan?.id,
-              plan?.user?.id,
-              day?.task?.id,
+            const modernTasks = await Promise.all(
+              (day.dayTasks || []).map(async (dayTask) => {
+                const taskStatus = await this.taskService.getTaskStatus(
+                  plan?.id,
+                  plan?.user?.id,
+                  dayTask?.task?.id,
+                );
+                const completed =
+                  taskStatus && taskStatus.completed !== undefined
+                    ? taskStatus.completed
+                    : false;
+
+                const isValidTask =
+                  dayTask.task &&
+                  dayTask.task.id !== undefined &&
+                  dayTask.task.title !== undefined;
+
+                if (!isValidTask) {
+                  return null;
+                }
+
+                return {
+                  ...dayTask.task,
+                  completed,
+                };
+              }),
             );
-            const completed =
-              taskStatus && taskStatus.completed !== undefined
-                ? taskStatus.completed
-                : false;
 
-            const isValidTask =
-              day.task &&
-              day.task.id !== undefined &&
-              day.task.title !== undefined;
+            const isValidDay =
+              day.id !== undefined && day.dayNumber !== undefined;
 
-            if (!isValidTask) {
+            if (!isValidDay) {
               return null;
             }
 
+            const transformedTasks = modernTasks.filter(
+              (task) => task !== null && task.completed === true,
+            );
+
             return {
               ...day,
-              task: {
-                ...day.task,
-                completed,
-              },
+              tasks: transformedTasks,
             };
           }),
         );
@@ -364,62 +255,298 @@ export class PlanService {
     return modernPlan;
   }
 
+  private async transformPlansUn(plan: any) {
+    const modernPlan = await Promise.all(
+      plan.weeks.map(async (week) => {
+        const modernWeek = await Promise.all(
+          week.days.map(async (day) => {
+            const modernTasks = await Promise.all(
+              (day.dayTasks || []).map(async (dayTask) => {
+                const taskStatus = await this.taskService.getTaskStatus(
+                  plan?.id,
+                  plan?.user?.id,
+                  dayTask?.task?.id,
+                );
+                const completed =
+                  taskStatus && taskStatus.completed !== undefined
+                    ? taskStatus.completed
+                    : false;
+
+                const isValidTask =
+                  dayTask.task &&
+                  dayTask.task.id !== undefined &&
+                  dayTask.task.title !== undefined;
+
+                if (!isValidTask) {
+                  return null;
+                }
+
+                return {
+                  ...dayTask.task,
+                  completed,
+                };
+              }),
+            );
+
+            const isValidDay =
+              day.id !== undefined && day.dayNumber !== undefined;
+
+            if (!isValidDay) {
+              return null;
+            }
+
+            const transformedTasks = modernTasks.filter(
+              (task) => task !== null && task.completed === false, // Include only incomplete tasks
+            );
+
+            return {
+              ...day,
+              tasks: transformedTasks,
+            };
+          }),
+        );
+
+        const filteredWeek = modernWeek.filter((day) => day !== null);
+
+        return {
+          ...week,
+          days: filteredWeek,
+        };
+      }),
+    );
+
+    return modernPlan;
+  }
+
+  async getUncompletedPlansByUserId(
+    user: User,
+    offset: number = 0,
+    limit: number = 5,
+  ) {
+    try {
+      const plans = await this.planRepository.find({
+        where: { user: { id: user.id } },
+        relations: [
+          'weeks',
+          'weeks.days',
+          'weeks.days.dayTasks',
+          'weeks.days.dayTasks.task',
+          'template',
+        ],
+        order: { deadline: 'ASC' },
+      });
+
+      const uncompletedPlans = [];
+      const today = new Date();
+
+      await Promise.all(
+        plans.map(async (plan) => {
+          const modernPlan = await this.transformPlansUn(plan);
+
+          const filteredModernPlan = modernPlan.filter(
+            (week) => week.days.length > 0,
+          );
+
+          const totalTasks = new Set<string>();
+
+          filteredModernPlan
+            .flatMap((week) => week.days)
+            .forEach((day) => {
+              day.tasks.forEach((task) => {
+                totalTasks.add(task.id);
+              });
+            });
+
+          if (totalTasks.size === 0) {
+            return;
+          }
+
+          const completedTasks = filteredModernPlan
+            .flatMap((week) => week.days)
+            .filter(
+              (day) =>
+                day.tasks &&
+                day.tasks.length > 0 &&
+                day.tasks[0].completed === true,
+            ).length;
+
+          // Fix the condition to filter uncompleted plans
+          if (completedTasks === 0 && totalTasks.size > 0) {
+            const upcomingTasks = filteredModernPlan
+              .flatMap((week) => week.days)
+              .filter(
+                (day) =>
+                  day.tasks &&
+                  day.tasks.length > 0 &&
+                  !day.tasks[0].completed &&
+                  (isToday(new Date(day.dayNumber)) ||
+                    new Date(day.dayNumber) > today),
+              )
+              .sort((a, b) =>
+                differenceInDays(new Date(a.dayNumber), new Date(b.dayNumber)),
+              );
+
+            const uncompletedTask =
+              upcomingTasks.length > 0 ? upcomingTasks[0]?.tasks[0] : null;
+
+            const planInfo = {
+              id: plan.id,
+              name: totalTasks.size > 0 ? plan.template?.name || null : null,
+              deadline: plan.deadline,
+              totalTasks: totalTasks.size,
+              upcomingTask: uncompletedTask,
+            };
+
+            uncompletedPlans.push(planInfo);
+          }
+        }),
+      );
+
+      const sortedUncompletedPlans = uncompletedPlans.sort(
+        (a, b) =>
+          new Date(a.deadline).getTime() - new Date(b.deadline).getTime(),
+      );
+
+      const startIndex = Number(offset);
+      const endIndex = Number(offset) + Number(limit);
+      const slicedPlans = sortedUncompletedPlans.slice(startIndex, endIndex);
+
+      return slicedPlans;
+    } catch (error) {
+      throw error;
+    }
+  }
+  async findUpcomingTask(weeks: any[]): Promise<any> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+
+    let upcomingTask = null;
+
+    for (const week of weeks) {
+      for (const day of week.days) {
+        const dayDate = new Date(day.dayNumber);
+
+        dayDate.setHours(0, 0, 0, 0);
+
+        if (dayDate >= today && dayDate < tomorrow) {
+          if (day.task && day.task.completed === false) {
+            upcomingTask = {
+              dayNumber: day.dayNumber,
+              task: day.task,
+            };
+
+            break;
+          }
+        }
+      }
+
+      if (upcomingTask) {
+        break;
+      }
+    }
+
+    return upcomingTask;
+  }
+
   async getPlanById(planId: string, user: User) {
     try {
       if (!uuidValidate(planId)) {
         throw new ApiError('Valid format id', 400);
       }
+
       const plan = await this.planRepository.findOne({
         where: { id: planId, user: { id: user.id } },
-        relations: ['weeks', 'weeks.days', 'weeks.days.task', 'template'],
+        relations: [
+          'weeks',
+          'weeks.days',
+          'weeks.days.dayTasks',
+          'weeks.days.dayTasks.task',
+          'template',
+        ],
       });
 
       if (!plan) throw new ApiError('Plan not found', 404);
 
-      const modernPlan = await Promise.all(
-        plan.weeks.map(async (week) => {
-          const modernWeek = await Promise.all(
-            week.days.map(async (day) => {
-              const taskStatus = await this.taskService.getTaskStatus(
-                plan?.id,
-                plan?.user?.id,
-                day?.task?.id,
-              );
+      const transformedWeeks = await Promise.all(
+        (plan.weeks || [])
+          .filter((week) => week.days && week.days.length > 0) // Фильтр для удаления нулевых недель
+          .map(async (week) => {
+            const transformedDays = await Promise.all(
+              (week.days || [])
+                .filter((day) => day.dayTasks && day.dayTasks.length > 0) // Фильтр для удаления нулевых дней
+                .flatMap(async (day: any) => {
+                  const transformedTasks = await Promise.all(
+                    (day.dayTasks || []).map(async (dayTask: any) => {
+                      const taskStatus = await this.taskService.getTaskStatus(
+                        plan?.id,
+                        plan?.user?.id,
+                        dayTask?.task?.id,
+                      );
+                      const completed =
+                        taskStatus && taskStatus.completed !== undefined
+                          ? taskStatus.completed
+                          : false;
 
-              const completed =
-                taskStatus && taskStatus.completed !== undefined
-                  ? taskStatus.completed
-                  : false;
+                      return {
+                        id: dayTask.task.id,
+                        dayNumber: day.dayNumber,
+                        task: {
+                          ...dayTask.task,
+                          completed,
+                        },
+                      };
+                    }),
+                  );
 
-              const isValidTask =
-                day.task &&
-                day.task.id !== undefined &&
-                day.task.title !== undefined;
+                  const transformedDaysForTasks = transformedTasks.map(
+                    (task) => ({
+                      dayNumber: task.dayNumber,
+                      task: task.task,
+                    }),
+                  );
 
-              if (!isValidTask) {
-                return null;
-              }
+                  const sortedTransformedDays = transformedDaysForTasks.sort(
+                    (a, b) =>
+                      new Date(a.dayNumber).getTime() -
+                      new Date(b.dayNumber).getTime(),
+                  );
 
-              return {
-                ...day,
-                task: {
-                  ...day.task,
-                  completed,
-                },
-              };
-            }),
-          );
+                  return sortedTransformedDays;
+                }),
+            );
 
-          const filteredWeek = modernWeek.filter((day) => day !== null);
-          return {
-            ...week,
-            days: filteredWeek,
-          };
-        }),
+            const transformedDaysFlat = transformedDays.flat();
+
+            const sortedTransformedDaysFlat = transformedDaysFlat.sort(
+              (a, b) =>
+                new Date(a.dayNumber).getTime() -
+                new Date(b.dayNumber).getTime(),
+            );
+
+            const earliestDayNumber =
+              sortedTransformedDaysFlat.length > 0
+                ? sortedTransformedDaysFlat[0].dayNumber
+                : null;
+
+            return {
+              id: week.id,
+              days: sortedTransformedDaysFlat,
+              earliestDayNumber,
+            };
+          }),
       );
 
-      const filteredModernPlan = modernPlan.filter(
-        (week) => week.days.length > 0,
+      const flatTransformedWeeks = transformedWeeks.flat();
+
+      let sortedWeeks = flatTransformedWeeks.sort(
+        (a, b) =>
+          a.earliestDayNumber - b.earliestDayNumber ||
+          new Date(a.days[0].dayNumber).getTime() -
+            new Date(b.days[0].dayNumber).getTime(),
       );
 
       const today = new Date();
@@ -433,25 +560,26 @@ export class PlanService {
           1
         : daysLeft;
 
-      const totalTasks = filteredModernPlan
-        .flatMap((week) => week.days)
-        .filter((day) => day.task && day.task.completed !== undefined).length;
+      const totalTasks = flatTransformedWeeks
+        .flatMap((day) => day.days)
+        .filter(
+          (task) => task && task.task && task.task.completed !== undefined,
+        ).length;
 
-      const completedTasks = filteredModernPlan
-        .flatMap((week) => week.days)
-        .filter((day) => day.task && day.task.completed === true).length;
+      const completedTasks = flatTransformedWeeks
+        .flatMap((day) => day.days)
+        .filter(
+          (task) => task && task.task && task.task.completed === true,
+        ).length;
 
-      const upcomingTask = filteredModernPlan
-        .flatMap((week) => week.days)
-        .find(
-          (day) =>
-            day.task &&
-            day.task.completed !== undefined &&
-            !day.task.completed &&
-            (isToday(new Date(day.dayNumber)) ||
-              isTomorrow(new Date(day.dayNumber))),
-        );
+      const upcomingTask = await this.findUpcomingTask(flatTransformedWeeks);
 
+      if (
+        sortedWeeks.length === 0 ||
+        sortedWeeks.every((week) => week.days.length === 0)
+      ) {
+        sortedWeeks = null;
+      }
       return {
         startDate: plan.startDate,
         deadline: plan.deadline,
@@ -462,7 +590,7 @@ export class PlanService {
         totalTasks,
         completedTasks,
         upcomingTask,
-        weeks: filteredModernPlan,
+        weeks: sortedWeeks,
       };
     } catch (error) {
       throw error;
@@ -473,7 +601,12 @@ export class PlanService {
     try {
       const plan = await this.planRepository.findOne({
         where: { id: planId, user: { id: user.id } },
-        relations: ['weeks', 'weeks.days', 'weeks.days.task'],
+        relations: [
+          'weeks',
+          'weeks.days',
+          'weeks.days.dayTasks',
+          'weeks.days.dayTasks.task',
+        ],
       });
 
       if (!plan) {
@@ -481,20 +614,33 @@ export class PlanService {
       }
 
       let taskFound = false;
+      const updatedWeeks = plan.weeks.map((week: any) => ({
+        ...week,
+        days: week.days.map((day) => {
+          const updatedTasks = (day.dayTasks || [])
+            .map((dayTask) => {
+              if (dayTask.task.id === taskId) {
+                taskFound = true;
+                return null;
+              }
+              return dayTask;
+            })
+            .filter(Boolean);
 
-      plan.weeks.forEach((week) => {
-        week.days.forEach((day, index) => {
-          if (day.task?.id === taskId) {
-            week.days.splice(index, 1);
-            taskFound = true;
-          }
-        });
-      });
+          return {
+            ...day,
+            dayTasks: updatedTasks,
+          };
+        }),
+      }));
 
       if (!taskFound) {
         throw new ApiError('Task not found in the plan', 404);
       }
-      await this.planRepository.save(plan);
+      const updatedPlan = { ...plan, weeks: updatedWeeks };
+
+      await this.planRepository.save(updatedPlan);
+
       return { taskId };
     } catch (error) {
       throw error;
@@ -508,7 +654,8 @@ export class PlanService {
         relations: [
           'weeks',
           'weeks.days',
-          'weeks.days.task',
+          'weeks.days.dayTasks',
+          'weeks.days.dayTasks.task',
           'userTaskStatuses',
         ],
       });
@@ -516,8 +663,8 @@ export class PlanService {
       if (!plan) {
         throw new NotFoundException('Plan not found');
       }
-
       await this.weekService.deleteWeeks(plan.weeks);
+
       await this.taskService.removeUserTaskStatuses(plan.id, user.id);
       await this.planRepository.remove(plan);
 
@@ -534,7 +681,8 @@ export class PlanService {
         relations: [
           'weeks',
           'weeks.days',
-          'weeks.days.task',
+          'weeks.days.dayTasks',
+          'weeks.days.dayTasks.task',
           'userTaskStatuses',
         ],
       });
@@ -556,12 +704,18 @@ export class PlanService {
       if (!uuidValidate(planId) || !uuidValidate(taskId)) {
         throw new ApiError('Valid format id', 400);
       }
+
       const plan = await this.planRepository.findOne({
         where: {
           id: planId,
           user: { id: user.id },
         },
-        relations: ['weeks', 'weeks.days', 'weeks.days.task'],
+        relations: [
+          'weeks',
+          'weeks.days',
+          'weeks.days.dayTasks',
+          'weeks.days.dayTasks.task',
+        ],
       });
 
       if (!plan) {
@@ -569,23 +723,36 @@ export class PlanService {
       }
 
       let foundTask = null;
+
       for (const [index, week] of plan.weeks.entries()) {
         for (const day of week.days) {
-          if (day.task?.id === taskId) {
+          const task: any = day?.dayTasks?.find(
+            (dayTask: any) => dayTask.task.id === taskId,
+          );
+
+          if (task) {
             const taskStatus = await this.taskService.getTaskStatus(
               plan?.id,
               plan?.user?.id,
-              day?.task?.id,
+              task?.task?.id,
             );
 
             foundTask = {
-              task: { ...day.task, complteted: taskStatus.completed },
+              task: {
+                ...task.task,
+                completed: taskStatus?.completed || false,
+              },
               weekOrder: index + 1,
               day: day.dayNumber,
             };
+            break;
           }
         }
+        if (foundTask) {
+          break;
+        }
       }
+
       if (!foundTask) {
         throw new ApiError('Task not found in the plan', 404);
       }

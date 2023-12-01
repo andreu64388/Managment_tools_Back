@@ -30,12 +30,4 @@ export class RoleService {
     }
     return role;
   }
-
-  async findAll() {
-    return await this.roleRepository.find();
-  }
-
-  async remove(id: number) {
-    return await this.roleRepository.delete(id);
-  }
 }

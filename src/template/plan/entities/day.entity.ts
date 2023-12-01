@@ -1,6 +1,13 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { Task } from '../../task/entities/task.entity';
+import {
+  Column,
+  Entity,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+
 import { Week } from './week.entity';
+import { DayTask } from './dayTask';
 
 @Entity('days')
 export class Day {
@@ -10,8 +17,10 @@ export class Day {
   @Column()
   dayNumber: Date;
 
-  @ManyToOne(() => Task, (task) => task.days, { nullable: true })
-  task: Task;
+  @OneToMany(() => DayTask, (dayTask) => dayTask.day, {
+    cascade: true,
+  })
+  dayTasks: DayTask[];
 
   @ManyToOne(() => Week, (week) => week.days)
   week: Week;
