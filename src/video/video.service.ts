@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as path from 'path';
 import * as fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -44,7 +44,6 @@ export class VideoService {
       };
 
       res.writeHead(206, headers);
-
       const videoStream = fs.createReadStream(videoPath, { start, end });
       videoStream.pipe(res);
     }

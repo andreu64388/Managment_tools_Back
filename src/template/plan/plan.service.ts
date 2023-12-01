@@ -3,22 +3,13 @@ import { CreatePlanDto } from './dto/create-plan.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TemplateService } from '../template.service';
-import {
-  addDays,
-  differenceInDays,
-  isAfter,
-  isToday,
-  isTomorrow,
-  parseISO,
-  startOfDay,
-} from 'date-fns';
+import { differenceInDays, isToday } from 'date-fns';
 import { WeekService } from './services/week.service';
 import { Plan } from './entities/plan.entity';
 import { User } from 'src/user/entities/user.entity';
 import { TaskService } from '../task/task.service';
 import { ApiError } from 'src/exceptions/ApiError.exception';
 import { validate as uuidValidate } from 'uuid';
-import { parse } from 'date-fns';
 import { DayService } from './services/day.service';
 
 @Injectable()
@@ -473,46 +464,50 @@ export class PlanService {
 
       const transformedWeeks = await Promise.all(
         (plan.weeks || [])
-          .filter((week) => week.days && week.days.length > 0) // Фильтр для удаления нулевых недель
+          .filter((week) => week.days && week.days.length > 0)
           .map(async (week) => {
             const transformedDays = await Promise.all(
               (week.days || [])
-                .filter((day) => day.dayTasks && day.dayTasks.length > 0) // Фильтр для удаления нулевых дней
+                .filter((day) => day.dayTasks && day.dayTasks.length > 0)
                 .flatMap(async (day: any) => {
                   const transformedTasks = await Promise.all(
-                    (day.dayTasks || []).map(async (dayTask: any) => {
-                      const taskStatus = await this.taskService.getTaskStatus(
-                        plan?.id,
-                        plan?.user?.id,
-                        dayTask?.task?.id,
-                      );
-                      const completed =
-                        taskStatus && taskStatus.completed !== undefined
-                          ? taskStatus.completed
-                          : false;
+                    (day.dayTasks || [])
+                      .filter((dayTask: any) => dayTask.task !== undefined)
+                      .map(async (dayTask: any) => {
+                        const taskStatus = await this.taskService.getTaskStatus(
+                          plan?.id,
+                          plan?.user?.id,
+                          dayTask?.task?.id,
+                        );
+                        const completed =
+                          taskStatus && taskStatus.completed !== undefined
+                            ? taskStatus.completed
+                            : false;
 
-                      return {
-                        id: dayTask.task.id,
-                        dayNumber: day.dayNumber,
-                        task: {
-                          ...dayTask.task,
-                          completed,
-                        },
-                      };
-                    }),
+                        return {
+                          id: dayTask.task.id,
+                          dayNumber: day.dayNumber,
+                          task: {
+                            ...(dayTask.task || {}),
+                            completed,
+                          },
+                        };
+                      }),
                   );
 
-                  const transformedDaysForTasks = transformedTasks.map(
-                    (task) => ({
+                  const transformedDaysForTasks = transformedTasks
+                    .filter((task) => task && task.dayNumber !== undefined)
+                    .map((task) => ({
                       dayNumber: task.dayNumber,
                       task: task.task,
-                    }),
-                  );
+                    }));
 
                   const sortedTransformedDays = transformedDaysForTasks.sort(
                     (a, b) =>
-                      new Date(a.dayNumber).getTime() -
-                      new Date(b.dayNumber).getTime(),
+                      a.dayNumber !== undefined && b.dayNumber !== undefined
+                        ? new Date(a.dayNumber).getTime() -
+                          new Date(b.dayNumber).getTime()
+                        : 0,
                   );
 
                   return sortedTransformedDays;
@@ -521,11 +516,14 @@ export class PlanService {
 
             const transformedDaysFlat = transformedDays.flat();
 
-            const sortedTransformedDaysFlat = transformedDaysFlat.sort(
-              (a, b) =>
-                new Date(a.dayNumber).getTime() -
-                new Date(b.dayNumber).getTime(),
-            );
+            const sortedTransformedDaysFlat = transformedDaysFlat
+              .filter((item) => item && item.dayNumber !== undefined)
+              .sort((a, b) =>
+                a.dayNumber !== undefined && b.dayNumber !== undefined
+                  ? new Date(a.dayNumber).getTime() -
+                    new Date(b.dayNumber).getTime()
+                  : 0,
+              );
 
             const earliestDayNumber =
               sortedTransformedDaysFlat.length > 0
@@ -540,13 +538,16 @@ export class PlanService {
           }),
       );
 
-      const flatTransformedWeeks = transformedWeeks.flat();
+      const flatTransformedWeeks = transformedWeeks.flat().filter(Boolean); // Фильтрация undefined
 
       let sortedWeeks = flatTransformedWeeks.sort(
         (a, b) =>
           a.earliestDayNumber - b.earliestDayNumber ||
-          new Date(a.days[0].dayNumber).getTime() -
-            new Date(b.days[0].dayNumber).getTime(),
+          (a.days[0]?.dayNumber !== undefined &&
+          b.days[0]?.dayNumber !== undefined
+            ? new Date(a.days[0].dayNumber).getTime() -
+              new Date(b.days[0].dayNumber).getTime()
+            : 0),
       );
 
       const today = new Date();
@@ -580,6 +581,10 @@ export class PlanService {
       ) {
         sortedWeeks = null;
       }
+
+      const filteredSortedWeeks = sortedWeeks?.filter(
+        (week) => week.days.length > 0,
+      );
       return {
         startDate: plan.startDate,
         deadline: plan.deadline,
@@ -590,7 +595,7 @@ export class PlanService {
         totalTasks,
         completedTasks,
         upcomingTask,
-        weeks: sortedWeeks,
+        weeks: filteredSortedWeeks,
       };
     } catch (error) {
       throw error;

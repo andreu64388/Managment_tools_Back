@@ -36,8 +36,11 @@ export class TaskController {
     @UploadedFile() video: Express.Multer.File,
     @Body() createTaskDto: any,
   ) {
-    const videoPath = await this.videoService.uploadFile(video);
-    console.log(videoPath);
+    console.log('work');
+    let videoPath = '';
+    if (video) {
+      videoPath = await this.videoService.uploadFile(video);
+    }
     return this.taskService.create(createTaskDto, videoPath);
   }
 
@@ -49,6 +52,7 @@ export class TaskController {
     @Body() updateTaskDto: any,
     @UploadedFile() video: Express.Multer.File,
   ) {
+    console.log('work');
     let videoPath = '';
     if (video) {
       videoPath = await this.videoService.uploadFile(video);
