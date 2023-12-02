@@ -58,8 +58,6 @@ export class DayService {
 
       return days;
     } catch (error) {
-      // Handle the error as needed
-      console.error('Error generating days:', error.message);
       throw new Error('Failed to generate days');
     }
   }
@@ -73,7 +71,6 @@ export class DayService {
 
       return dayTasks;
     } catch (error) {
-      console.error('Error getting day tasks:', error.message);
       throw new Error('Failed to get day tasks');
     }
   }
@@ -86,7 +83,6 @@ export class DayService {
         await this.dayTaskRepository.delete(dayTaskIds);
       }
     } catch (error) {
-      console.error('Error deleting day tasks:', error.message);
       throw new Error('Failed to delete day tasks');
     }
   }
@@ -100,7 +96,6 @@ export class DayService {
         await this.dayRepository.delete(dayIds);
       }
     } catch (error) {
-      console.error('Error deleting days:', error.message);
       throw new Error('Failed to delete days');
     }
   }

@@ -1,7 +1,3 @@
-import { Role } from 'src/role/entities/role.entity';
-import { Plan } from 'src/template/plan/entities/plan.entity';
-import { UserTaskStatus } from 'src/template/task/entities/UserTaskStatus.entity';
-
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -12,6 +8,9 @@ import {
   JoinTable,
   OneToMany,
 } from 'typeorm';
+import { Role } from 'src/role/entities/role.entity';
+import { Plan } from 'src/template/plan/entities/plan.entity';
+import { UserTaskStatus } from 'src/template/task/entities/UserTaskStatus.entity';
 
 @Entity('users')
 export class User {

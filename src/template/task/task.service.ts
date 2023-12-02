@@ -12,7 +12,6 @@ import { ApiError } from 'src/exceptions/ApiError.exception';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { DayService } from '../plan/services/day.service';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
-import { VideoService } from 'src/video/video.service';
 
 @Global()
 @Injectable()
@@ -24,10 +23,9 @@ export class TaskService {
     @InjectRepository(UserTaskStatus)
     private readonly userTaskStatusRepository: Repository<UserTaskStatus>,
     private readonly dayService: DayService,
-    private readonly videoService: VideoService,
   ) {}
 
-  async create(createTaskDto: CreateTaskDto, videoPath?: string) {
+  async create(createTaskDto: CreateTaskDto) {
     try {
       const template = await this.templateService.findById(
         createTaskDto.templateId,
@@ -37,7 +35,7 @@ export class TaskService {
         title: createTaskDto.title,
         duration: createTaskDto.duration,
         descriptions: createTaskDto.descriptions,
-        video: videoPath || '',
+        video: createTaskDto.video ? createTaskDto.video : null,
       });
 
       task.template = template;
@@ -56,7 +54,7 @@ export class TaskService {
     return { title, duration, descriptions, id, video };
   }
 
-  async update(updateTaskDto: UpdateTaskDto, video: string) {
+  async update(updateTaskDto: UpdateTaskDto) {
     try {
       const task = await this.taskRepository.findOne({
         where: { id: updateTaskDto.taskId },
@@ -69,8 +67,8 @@ export class TaskService {
       task.title = updateTaskDto.title;
       task.duration = updateTaskDto.duration;
       task.descriptions = updateTaskDto.descriptions;
-      if (video) {
-        task.video = video;
+      if (updateTaskDto.video) {
+        task.video = updateTaskDto.video;
       }
 
       await this.taskRepository.save(task);
@@ -100,18 +98,16 @@ export class TaskService {
     try {
       const task = await this.taskRepository.findOne({
         where: { id: taskId },
-        relations: ['days', 'userTaskStatuses'],
+        relations: ['dayTasks', 'userTaskStatuses'],
       });
 
       if (!task) {
         throw new ApiError('Task not found', 404);
       }
 
-      if (task.video) {
-        await this.videoService.deleteVideo(task.video);
-      }
-
-      // await this.dayService.deleteDays(task.days);
+      await this.dayService.deleteDayTasks(
+        task.dayTasks.map((dayTask) => dayTask),
+      );
 
       await Promise.all(
         task.userTaskStatuses.map(async (userTaskStatus) => {
