@@ -22,7 +22,6 @@ export class TemplateService {
         name: createTemplateDto.name,
         prepTime: createTemplateDto.prepTime,
         idealPreReq: createTemplateDto.idealPreReq,
-        duration: createTemplateDto.duration,
       });
 
       return this.templateRepository.save(template);
@@ -39,7 +38,6 @@ export class TemplateService {
       template.name = updateTemplateTemplate.name;
       template.prepTime = updateTemplateTemplate.prepTime;
       template.idealPreReq = updateTemplateTemplate.idealPreReq;
-      template.duration = updateTemplateTemplate.duration;
 
       await this.templateRepository.save(template);
 
@@ -48,7 +46,6 @@ export class TemplateService {
         name: template.name,
         prepTime: template.prepTime,
         idealPreReq: template.idealPreReq,
-        duration: template.duration,
       };
 
       return templateWithoutTasks;
@@ -62,8 +59,6 @@ export class TemplateService {
       const templates = await this.templateRepository.find({
         relations: ['tasks'],
         order: { createAt: 'ASC' },
-        skip: offset,
-        take: limit,
       });
 
       let templateInfo = templates.map((template) => ({
@@ -72,14 +67,17 @@ export class TemplateService {
         count: template?.tasks?.length,
         prepTime: template?.prepTime,
         idealPreReq: template?.idealPreReq,
-        duration: template?.duration,
       }));
 
       if (this.isUserWithUserRole(user)) {
         templateInfo = templateInfo.filter((el) => el.count !== 0);
       }
 
-      if (templateInfo) return templateInfo;
+      const startIndex = Number(offset);
+      const endIndex = Number(offset) + Number(limit);
+      const slicedPlans = templateInfo.slice(startIndex, endIndex);
+
+      if (templateInfo) return slicedPlans;
     } catch (e) {
       throw new ApiError("Couldn't get templates", 400);
     }
@@ -107,7 +105,6 @@ export class TemplateService {
         taskCount: taskCount,
         prepTime: template?.prepTime,
         idealPreReq: template?.idealPreReq,
-        duration: template?.duration,
       };
 
       return templateWithoutTasks;

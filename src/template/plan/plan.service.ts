@@ -3,14 +3,13 @@ import { CreatePlanDto } from './dto/create-plan.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TemplateService } from '../template.service';
-import { differenceInDays, isToday } from 'date-fns';
+import { addMinutes, differenceInDays, isToday } from 'date-fns';
 import { WeekService } from './services/week.service';
 import { Plan } from './entities/plan.entity';
 import { User } from 'src/user/entities/user.entity';
 import { TaskService } from '../task/task.service';
 import { ApiError } from 'src/exceptions/ApiError.exception';
 import { validate as uuidValidate } from 'uuid';
-import { DayService } from './services/day.service';
 
 @Injectable()
 export class PlanService {
@@ -20,7 +19,6 @@ export class PlanService {
     private readonly templateService: TemplateService,
     private readonly weekService: WeekService,
     private readonly taskService: TaskService,
-    private readonly dayService: DayService,
   ) {}
 
   async create(createPlanDto: CreatePlanDto, user: User) {
@@ -45,7 +43,13 @@ export class PlanService {
       if (parsedDeadline <= startDate) {
         throw new ApiError('Selected date must be in the future', 400);
       }
+      const prepTimeInMinutes = template.prepTime;
 
+      const minStartDate = addMinutes(startDate, prepTimeInMinutes);
+
+      if (parsedDeadline <= minStartDate) {
+        throw new ApiError('Selected date must be after prepTime', 400);
+      }
       const totalDays = differenceInDays(parsedDeadline, startDate) + 1;
 
       const countTask = template.tasks.length;

@@ -5,8 +5,5 @@ export class CreateTaskDto {
   readonly title: string;
 
   @IsNumber()
-  readonly duration: number;
-
-  @IsNumber()
   readonly templateId: number;
 }

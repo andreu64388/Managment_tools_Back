@@ -12,7 +12,4 @@ export class UpdateTemplateDto {
 
   @IsString()
   idealPreReq: string;
-
-  @IsInt()
-  duration: number;
 }

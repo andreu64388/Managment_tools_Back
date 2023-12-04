@@ -22,9 +22,6 @@ export class Template {
   @Column({ nullable: true })
   idealPreReq: string;
 
-  @Column({ type: 'int', nullable: true })
-  duration: number;
-
   @OneToMany(() => Task, (task) => task.template, {
     onDelete: 'CASCADE',
   })

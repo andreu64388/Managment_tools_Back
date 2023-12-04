@@ -1,4 +1,4 @@
-import { IsString, IsInt, isString } from 'class-validator';
+import { IsString, IsInt } from 'class-validator';
 
 export class CreateTemplateDto {
   @IsString()
@@ -9,7 +9,4 @@ export class CreateTemplateDto {
 
   @IsString()
   idealPreReq: string;
-
-  @IsInt()
-  duration: number;
 }
