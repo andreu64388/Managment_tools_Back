@@ -18,9 +18,7 @@ import { DayTask } from './entities/dayTask';
     TypeOrmModule.forFeature([Plan]),
     TypeOrmModule.forFeature([Day, DayTask]),
     TypeOrmModule.forFeature([Week]),
-
     TypeOrmModule.forFeature([UserTaskStatus]),
-
     UserModule,
     forwardRef(() => TaskModule),
     forwardRef(() => TemplateModule),

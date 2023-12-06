@@ -45,16 +45,14 @@ export class WeekService {
                     taskIndex++;
                   }
                 }
-                // Add 1 day for each task, considering distribution
+
                 currentDay.setDate(currentDay.getDate() + 1);
               } else {
-                // If no tasks, still add 1 day
                 currentDay.setDate(currentDay.getDate() + 1);
               }
             }
           }
 
-          // Add 6 more days to ensure a week gap
           currentDay.setDate(currentDay.getDate() + 6);
 
           const nonEmptyWeekTasks = weekTasks.filter((task) => task !== null);

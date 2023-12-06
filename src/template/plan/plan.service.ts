@@ -3,7 +3,7 @@ import { CreatePlanDto } from './dto/create-plan.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TemplateService } from '../template.service';
-import { addMinutes, differenceInDays, isToday } from 'date-fns';
+import { addDays, addMinutes, differenceInDays, isToday } from 'date-fns';
 import { WeekService } from './services/week.service';
 import { Plan } from './entities/plan.entity';
 import { User } from 'src/user/entities/user.entity';
@@ -47,7 +47,8 @@ export class PlanService {
 
       const minStartDate = addMinutes(startDate, prepTimeInMinutes);
 
-      if (parsedDeadline <= minStartDate) {
+      const adjustedMinStartDate = addDays(minStartDate, -1);
+      if (parsedDeadline <= adjustedMinStartDate) {
         throw new ApiError('Selected date must be after prepTime', 400);
       }
       const totalDays = differenceInDays(parsedDeadline, startDate) + 1;
