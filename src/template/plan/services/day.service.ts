@@ -23,10 +23,10 @@ export class DayService {
   ): Promise<Day[]> {
     const days: Day[] = [];
     let taskIndex = 0;
-
     try {
       for (let i = 0; i < countTaskDistribution.length; i++) {
-        const currentDay = addDays(startDate, i);
+        const currentDay = new Date(startDate); // Create a new date to avoid reference issues
+        currentDay.setDate(currentDay.getDate() + i);
 
         const dayTasks: Task[] = [];
         for (let j = 0; j < countTaskDistribution[i]; j++) {

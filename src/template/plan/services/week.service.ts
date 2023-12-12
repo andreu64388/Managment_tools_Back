@@ -6,7 +6,6 @@ import { Template } from 'src/template/entities/template.entity';
 import { DayService } from './day.service';
 import { Task } from 'src/template/task/entities/task.entity';
 import { ApiError } from 'src/exceptions/ApiError.exception';
-import { addDays } from 'date-fns';
 
 @Injectable()
 export class WeekService {
@@ -45,15 +44,9 @@ export class WeekService {
                     taskIndex++;
                   }
                 }
-
-                currentDay.setDate(currentDay.getDate() + 1);
-              } else {
-                currentDay.setDate(currentDay.getDate() + 1);
               }
             }
           }
-
-          currentDay.setDate(currentDay.getDate() + 6);
 
           const nonEmptyWeekTasks = weekTasks.filter((task) => task !== null);
           if (nonEmptyWeekTasks.length > 0) {
@@ -66,6 +59,7 @@ export class WeekService {
             });
             weeks.push(week);
           }
+          currentDay.setDate(currentDay.getDate() + 7);
         }
       } else {
         let distribution: any = this.fillDistribution(totalDays, countTask);
@@ -97,6 +91,8 @@ export class WeekService {
             });
             weeks.push(week);
           }
+
+          currentDay.setDate(currentDay.getDate() + 7);
         }
       }
 
@@ -105,7 +101,6 @@ export class WeekService {
       throw new ApiError('Failed to generate weeks', 500);
     }
   }
-
   fillDistribution(totalDays: number, countTask: number) {
     let distribution: any = Array.from({ length: totalDays }).fill(0);
     let remainingTasks = countTask;
