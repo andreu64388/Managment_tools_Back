@@ -16,5 +16,5 @@ export class UpdateTaskDto {
   descriptions: string;
 
   @IsOptional()
-  video: string | null;
+  video: string[] | null;
 }

@@ -11,6 +11,7 @@ import { UserTaskStatus } from 'src/template/task/entities/UserTaskStatus.entity
 import { Task } from 'src/template/task/entities/task.entity';
 import { User } from 'src/user/entities/user.entity';
 import { DayTask } from 'src/template/plan/entities/dayTask';
+import { Video } from 'src/template/task/entities/video.entity';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { DayTask } from 'src/template/plan/entities/dayTask';
           Task,
           DayTask,
           UserTaskStatus,
+          Video,
         ],
         synchronize: true,
       }),

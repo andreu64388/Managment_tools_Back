@@ -13,5 +13,5 @@ export class CreateTaskDto {
   descriptions: string;
 
   @IsOptional()
-  video: string | null;
+  video: string[] | null;
 }

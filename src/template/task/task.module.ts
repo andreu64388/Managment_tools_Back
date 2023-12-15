@@ -7,10 +7,11 @@ import { Task } from './entities/task.entity';
 import { UserTaskStatus } from './entities/UserTaskStatus.entity';
 import { UserModule } from 'src/user/user.module';
 import { PlanModule } from '../plan/plan.module';
+import { Video } from './entities/video.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Task, UserTaskStatus]),
+    TypeOrmModule.forFeature([Task, UserTaskStatus, Video]),
     UserModule,
     forwardRef(() => TemplateModule),
     forwardRef(() => PlanModule),

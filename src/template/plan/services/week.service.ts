@@ -59,6 +59,7 @@ export class WeekService {
             });
             weeks.push(week);
           }
+
           currentDay.setDate(currentDay.getDate() + 7);
         }
       } else {

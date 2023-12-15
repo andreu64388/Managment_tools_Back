@@ -12,11 +12,14 @@ import { ApiError } from 'src/exceptions/ApiError.exception';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { DayService } from '../plan/services/day.service';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
+import { Video } from './entities/video.entity';
 
 @Global()
 @Injectable()
 export class TaskService {
   constructor(
+    @InjectRepository(Video)
+    private readonly videoRepositiry: Repository<Video>,
     private readonly templateService: TemplateService,
     @InjectRepository(Task)
     private readonly taskRepository: Repository<Task>,
@@ -35,10 +38,19 @@ export class TaskService {
         title: createTaskDto.title,
         duration: createTaskDto.duration,
         descriptions: createTaskDto.descriptions,
-        video: createTaskDto.video ? createTaskDto.video : null,
       });
 
       task.template = template;
+
+      if (createTaskDto.video && createTaskDto.video.length > 0) {
+        const videoEntities = await Promise.all(
+          createTaskDto.video.map((videoUrl) =>
+            this.videoRepositiry.create({ video: videoUrl }),
+          ),
+        );
+
+        task.video = videoEntities;
+      }
 
       await this.taskRepository.save(task);
 
@@ -53,11 +65,11 @@ export class TaskService {
     const { title, duration, descriptions, id, video } = task;
     return { title, duration, descriptions, id, video };
   }
-
   async update(updateTaskDto: UpdateTaskDto) {
     try {
       const task = await this.taskRepository.findOne({
         where: { id: updateTaskDto.taskId },
+        relations: ['video'],
       });
 
       if (!task) {
@@ -67,8 +79,17 @@ export class TaskService {
       task.title = updateTaskDto.title;
       task.duration = updateTaskDto.duration;
       task.descriptions = updateTaskDto.descriptions;
-      if (updateTaskDto.video) {
-        task.video = updateTaskDto.video;
+
+      if (updateTaskDto.video !== null) {
+        await this.videoRepositiry.remove(task.video || []);
+
+        task.video = await Promise.all(
+          updateTaskDto.video.map(async (videoUrl) => {
+            return this.videoRepositiry.create({ video: videoUrl });
+          }),
+        );
+      } else {
+        task.video = null;
       }
 
       await this.taskRepository.save(task);
@@ -82,6 +103,7 @@ export class TaskService {
     try {
       const task = await this.taskRepository.findOne({
         where: { id: taskId },
+        relations: ['video'],
       });
 
       task.video = null;
@@ -98,7 +120,7 @@ export class TaskService {
     try {
       const task = await this.taskRepository.findOne({
         where: { id: taskId },
-        relations: ['dayTasks', 'userTaskStatuses'],
+        relations: ['dayTasks', 'userTaskStatuses', 'video'],
       });
 
       if (!task) {
@@ -115,6 +137,14 @@ export class TaskService {
         }),
       );
 
+      if (task.video && task.video.length > 0) {
+        await Promise.all(
+          task.video.map(async (video) => {
+            await this.videoRepositiry.delete(video.id);
+          }),
+        );
+      }
+
       await this.taskRepository.delete(taskId);
 
       return { taskId };
@@ -127,6 +157,7 @@ export class TaskService {
     try {
       const task = await this.taskRepository.findOne({
         where: { id: taskId },
+        relations: ['video'],
       });
 
       if (!task) {
@@ -212,19 +243,19 @@ export class TaskService {
       throw e;
     }
   }
-
   async findOne(params: UpdateStatusDto, user: User) {
     try {
       if (!uuidValidate(params.planId)) {
         throw new ApiError('Valid format id', 400);
       }
+
       const userTaskStatus = await this.userTaskStatusRepository.findOne({
         where: {
           plan: { id: params.planId },
           user: { id: user.id },
           task: { id: params.taskId },
         },
-        relations: ['task', 'day', 'day.week'],
+        relations: ['task', 'task.videos', 'day', 'day.week'],
       });
 
       if (!userTaskStatus) {

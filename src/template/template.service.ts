@@ -58,7 +58,9 @@ export class TemplateService {
     try {
       const templates = await this.templateRepository.find({
         relations: ['tasks'],
-        order: { createAt: 'ASC' },
+        order: {
+          createAt: 'ASC',
+        },
       });
 
       let templateInfo = templates.map((template) => ({

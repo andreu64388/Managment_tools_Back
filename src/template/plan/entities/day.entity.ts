@@ -5,7 +5,6 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-
 import { Week } from './week.entity';
 import { DayTask } from './dayTask';
 

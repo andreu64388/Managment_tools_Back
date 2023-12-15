@@ -725,6 +725,7 @@ export class PlanService {
           'weeks.days',
           'weeks.days.dayTasks',
           'weeks.days.dayTasks.task',
+          'weeks.days.dayTasks.task.video',
         ],
       });
 

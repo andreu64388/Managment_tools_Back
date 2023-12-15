@@ -6,11 +6,10 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Day } from '../../plan/entities/day.entity';
 import { Template } from 'src/template/entities/template.entity';
 import { UserTaskStatus } from './UserTaskStatus.entity';
 import { DayTask } from 'src/template/plan/entities/dayTask';
-
+import { Video } from './video.entity';
 @Entity('tasks')
 export class Task {
   @PrimaryGeneratedColumn('uuid')
@@ -41,6 +40,8 @@ export class Task {
   })
   userTaskStatuses: UserTaskStatus[];
 
-  @Column({ nullable: true })
-  video: string;
+  @OneToMany(() => Video, (video) => video.task, {
+    cascade: true,
+  })
+  video: Video[];
 }

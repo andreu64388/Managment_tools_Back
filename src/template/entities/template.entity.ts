@@ -30,6 +30,6 @@ export class Template {
   @OneToMany(() => Plan, (plan) => plan.template, { onDelete: 'CASCADE' })
   plans: Plan[];
 
-  @CreateDateColumn({ type: 'timestamp', nullable: true })
+  @CreateDateColumn({ type: 'timestamp' })
   createAt: Date;
 }

@@ -3,9 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Day } from '../entities/day.entity';
 import { Task } from 'src/template/task/entities/task.entity';
-import { addDays } from 'date-fns';
 import { DayTask } from './../entities/dayTask';
-import { TaskService } from 'src/template/task/task.service';
 
 @Injectable()
 export class DayService {
@@ -25,7 +23,7 @@ export class DayService {
     let taskIndex = 0;
     try {
       for (let i = 0; i < countTaskDistribution.length; i++) {
-        const currentDay = new Date(startDate); // Create a new date to avoid reference issues
+        const currentDay = new Date(startDate);
         currentDay.setDate(currentDay.getDate() + i);
 
         const dayTasks: Task[] = [];
